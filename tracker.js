@@ -498,7 +498,7 @@ function send_sms(id, tracker, command, callback)
   function(err, sent_ids) 
   {
     //if any error ocurred
-    if(err && sent_ids.length > 0)
+    if(err || sent_ids == 'timeout')
     {
       //Log error
       logger.warn('Error sending sms to tracker ' + tracker.name + ': ' + err);
