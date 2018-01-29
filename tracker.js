@@ -498,7 +498,7 @@ function send_sms(id, tracker, command, callback)
   function(err, sent_ids) 
   {
     //if any error ocurred
-    if(err)
+    if(err && sent_ids.length > 0)
     {
       //Log error
       logger.warn('Error sending sms to tracker ' + tracker.name + ': ' + err);
@@ -585,7 +585,6 @@ function updateSPOT(tracker_id, tracker)
         }
       });
     }));
-  
   });
 }
 
