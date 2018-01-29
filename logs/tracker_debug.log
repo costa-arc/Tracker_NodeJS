@@ -53469,3 +53469,112 @@ OK]
 2018-01-29T15:20:00.104Z - debug: Next check on tracker Spot Tracker in 182 seconds 
 2018-01-29T15:20:00.104Z - debug: Modem <- [AT] 
 2018-01-29T15:20:00.111Z - debug: Modem -> [OK] 
+2018-01-29T15:20:27.306Z - debug: Modem -> [^RSSI: 10] 
+2018-01-29T15:20:34.810Z - debug: Modem -> [^RSSI: 11] 
+2018-01-29T15:20:40.460Z - debug: Modem -> [^RSSI: 10] 
+2018-01-29T15:21:00.214Z - debug: Running periodic check 
+2018-01-29T15:21:00.215Z - debug: Next check on tracker BIP 02 in 10296 seconds 
+2018-01-29T15:21:00.216Z - debug: Next check on tracker BIP 01 in 660 seconds 
+2018-01-29T15:21:00.217Z - debug: Next check on tracker Spot Tracker in 122 seconds 
+2018-01-29T15:21:00.219Z - debug: Modem <- [AT] 
+2018-01-29T15:21:00.243Z - debug: Modem -> [OK] 
+2018-01-29T15:21:45.897Z - debug: Modem -> [^RSSI: 8] 
+2018-01-29T15:21:47.778Z - debug: Modem -> [^RSSI: 10] 
+2018-01-29T15:21:50.143Z - debug: Modem -> [^RSSI: 8] 
+2018-01-29T15:21:51.548Z - debug: Modem -> [^RSSI: 6] 
+2018-01-29T15:21:54.839Z - debug: Modem -> [^RSSI: 7] 
+2018-01-29T15:22:00.417Z - debug: Running periodic check 
+2018-01-29T15:22:00.417Z - debug: Next check on tracker BIP 02 in 10236 seconds 
+2018-01-29T15:22:00.417Z - debug: Next check on tracker BIP 01 in 600 seconds 
+2018-01-29T15:22:00.417Z - debug: Next check on tracker Spot Tracker in 62 seconds 
+2018-01-29T15:22:00.417Z - debug: Modem <- [AT] 
+2018-01-29T15:22:00.433Z - debug: Modem -> [OK] 
+2018-01-29T15:22:06.614Z - debug: Modem -> [^RSSI: 9] 
+2018-01-29T15:22:19.776Z - debug: Modem -> [^RSSI: 10] 
+2018-01-29T15:22:24.030Z - debug: Modem -> [^RSSI: 9] 
+2018-01-29T15:22:26.369Z - debug: Modem -> [^RSSI: 10] 
+2018-01-29T15:22:32.961Z - debug: Modem -> [^RSSI: 9] 
+2018-01-29T15:22:51.323Z - debug: Modem -> [^RSSI: 10] 
+2018-01-29T15:23:00.715Z - debug: Running periodic check 
+2018-01-29T15:23:00.715Z - debug: Next check on tracker BIP 02 in 10175 seconds 
+2018-01-29T15:23:00.715Z - debug: Next check on tracker BIP 01 in 540 seconds 
+2018-01-29T15:23:00.715Z - debug: Next check on tracker Spot Tracker in 2 seconds 
+2018-01-29T15:23:00.715Z - debug: Modem <- [AT] 
+2018-01-29T15:23:00.731Z - debug: Modem -> [OK] 
+2018-01-29T15:23:13.921Z - debug: Modem -> [^RSSI: 9] 
+2018-01-29T15:23:36.523Z - debug: Modem -> [^RSSI: 7] 
+2018-01-29T15:24:00.075Z - debug: Running periodic check 
+2018-01-29T15:24:00.075Z - debug: Next check on tracker BIP 02 in 10116 seconds 
+2018-01-29T15:24:00.078Z - debug: Next check on tracker BIP 01 in 480 seconds 
+2018-01-29T15:24:00.078Z - debug: Performing check on tracker: Spot Tracker 
+2018-01-29T15:24:00.082Z - debug: Modem <- [AT] 
+2018-01-29T15:24:00.091Z - debug: Modem -> [OK] 
+2018-01-29T15:24:01.391Z - info: Successfully parsed tracker Spot Tracker XML feed 
+2018-01-29T15:24:01.866Z - info: Tracker modified: Spot Tracker 
+2018-01-29T15:24:01.869Z - debug: Next check on tracker Spot Tracker in 300 seconds 
+2018-01-29T15:24:06.646Z - debug: Modem -> [^RSSI: 10] 
+2018-01-29T15:24:38.183Z - debug: Modem -> [^RSSI: 9] 
+2018-01-29T15:24:41.961Z - debug: Modem -> [^RSSI: 7] 
+2018-01-29T15:24:43.379Z - debug: Modem -> [^RSSI: 9] 
+2018-01-29T15:24:49.026Z - debug: Modem -> [^RSSI: 10] 
+2018-01-29T15:25:00.304Z - debug: Running periodic check 
+2018-01-29T15:25:00.304Z - debug: Next check on tracker BIP 02 in 10056 seconds 
+2018-01-29T15:25:00.305Z - debug: Next check on tracker BIP 01 in 420 seconds 
+2018-01-29T15:25:00.307Z - debug: Next check on tracker Spot Tracker in 241 seconds 
+2018-01-29T15:25:00.308Z - debug: Modem <- [AT] 
+2018-01-29T15:25:00.314Z - debug: Modem -> [OK] 
+2018-01-29T15:25:24.324Z - debug: Modem -> [^RSSI: 9] 
+2018-01-29T15:25:38.451Z - debug: Modem -> [^RSSI: 7] 
+2018-01-29T15:25:42.230Z - debug: Modem -> [^RSSI: 6] 
+2018-01-29T15:25:44.090Z - debug: Modem -> [^RSSI: 5] 
+2018-01-29T15:25:50.683Z - debug: Modem -> [^RSSI: 7] 
+2018-01-29T15:25:52.105Z - debug: Modem -> [^RSSI: 9] 
+2018-01-29T15:25:53.980Z - debug: Modem -> [^RSSI: 8] 
+2018-01-29T15:25:55.399Z - debug: Modem -> [^RSSI: 6] 
+2018-01-29T15:25:56.326Z - debug: Modem -> [^RSSI: 8] 
+2018-01-29T15:26:00.652Z - debug: Running periodic check 
+2018-01-29T15:26:00.652Z - debug: Next check on tracker BIP 02 in 9995 seconds 
+2018-01-29T15:26:00.652Z - debug: Next check on tracker BIP 01 in 360 seconds 
+2018-01-29T15:26:00.652Z - debug: Next check on tracker Spot Tracker in 181 seconds 
+2018-01-29T15:26:00.652Z - debug: Modem <- [AT] 
+2018-01-29T15:26:00.662Z - debug: Modem -> [OK] 
+2018-01-29T15:26:01.513Z - debug: Modem -> [^RSSI: 7] 
+2018-01-29T15:26:03.872Z - debug: Modem -> [^RSSI: 8] 
+2018-01-29T15:26:05.746Z - debug: Modem -> [^RSSI: 9] 
+2018-01-29T15:26:10.933Z - debug: Modem -> [^RSSI: 8] 
+2018-01-29T15:26:30.230Z - debug: Modem -> [^RSSI: 9] 
+2018-01-29T15:26:31.636Z - debug: Modem -> [^RSSI: 11] 
+2018-01-29T15:26:36.543Z - debug: Modem -> [^RSSI: 10] 
+2018-01-29T15:26:44.355Z - debug: Modem -> [^RSSI: 10] 
+2018-01-29T15:26:53.774Z - debug: Modem -> [^RSSI: 9] 
+2018-01-29T15:26:59.887Z - debug: Modem -> [^RSSI: 10] 
+2018-01-29T15:27:00.074Z - debug: Running periodic check 
+2018-01-29T15:27:00.080Z - debug: Next check on tracker BIP 02 in 9936 seconds 
+2018-01-29T15:27:00.081Z - debug: Next check on tracker BIP 01 in 300 seconds 
+2018-01-29T15:27:00.084Z - debug: Next check on tracker Spot Tracker in 121 seconds 
+2018-01-29T15:27:00.089Z - debug: Modem <- [AT] 
+2018-01-29T15:27:00.099Z - debug: Modem -> [OK] 
+2018-01-29T15:27:04.121Z - debug: Modem -> [^RSSI: 11] 
+2018-01-29T15:27:10.252Z - debug: Modem -> [^RSSI: 9] 
+2018-01-29T15:27:18.731Z - debug: Modem -> [^RSSI: 11] 
+2018-01-29T15:27:32.840Z - debug: Modem -> [^RSSI: 10] 
+2018-01-29T15:28:00.418Z - debug: Running periodic check 
+2018-01-29T15:28:00.418Z - debug: Next check on tracker BIP 02 in 9876 seconds 
+2018-01-29T15:28:00.418Z - debug: Next check on tracker BIP 01 in 240 seconds 
+2018-01-29T15:28:00.418Z - debug: Next check on tracker Spot Tracker in 61 seconds 
+2018-01-29T15:28:00.418Z - debug: Modem <- [AT] 
+2018-01-29T15:28:00.433Z - debug: Modem -> [OK] 
+2018-01-29T15:28:24.963Z - info: Application initialized, dependencies loaded successfully 
+2018-01-29T15:28:24.963Z - debug: Initializing listener on Tracker collection 
+2018-01-29T15:28:25.014Z - info: Modem connection open 
+2018-01-29T15:28:25.016Z - debug: Modem <- [ATE0] 
+2018-01-29T15:28:25.088Z - debug: Modem -> [OK] 
+2018-01-29T15:28:25.089Z - debug: Modem <- [AT+CMGF=0] 
+2018-01-29T15:28:25.108Z - debug: Modem -> [OK] 
+2018-01-29T15:28:27.168Z - info: Tracker added: BIP 02 
+2018-01-29T15:28:27.168Z - debug: Next check on tracker BIP 02 in 9849 seconds 
+2018-01-29T15:28:27.168Z - info: Tracker added: BIP 01 
+2018-01-29T15:28:27.168Z - debug: Next check on tracker BIP 01 in 213 seconds 
+2018-01-29T15:28:27.168Z - info: Tracker added: Spot Tracker 
+2018-01-29T15:28:27.168Z - debug: Next check on tracker Spot Tracker in 34 seconds 
+2018-01-29T15:28:32.634Z - debug: Modem -> [^RSSI: 9] 
