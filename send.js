@@ -577,7 +577,7 @@ function updateSPOT(tracker_id, tracker)
           catch (error) 
           {
             //Log error
-            logger.error("Unexpected response in XML feed from  " + tracker.name + ": " + error, result);
+            logger.error("Unexpected response in XML feed from " + tracker.name + ": " + error, result);
           }
         }
       });
