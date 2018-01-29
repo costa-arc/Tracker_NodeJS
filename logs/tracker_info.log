@@ -31136,3 +31136,121 @@
 2018-01-29T11:25:00.107Z - error: Update on tracker BIP 01 failed 
 2018-01-29T11:25:00.111Z - error: Connection to modem failed: Error: Opening COM13: File not found 
 2018-01-29T11:25:00.503Z - info: Tracker modified: BIP 01 
+2018-01-29T14:28:23.707Z - info: Application initialized, dependencies loaded successfully 
+2018-01-29T14:28:23.707Z - error: Connection to modem failed: Error: Opening COM13: File not found 
+2018-01-29T14:28:26.483Z - info: Tracker added: BIP 02 
+2018-01-29T14:28:26.483Z - info: Tracker added: BIP 01 
+2018-01-29T14:28:26.483Z - info: Tracker added: Spot Tracker 
+2018-01-29T14:28:27.767Z - info: Successfully parsed tracker Spot Tracker XML feed 
+2018-01-29T14:28:28.886Z - info: Tracker modified: Spot Tracker 
+2018-01-29T14:29:00.846Z - warn: Modem not working properly 
+2018-01-29T14:29:00.846Z - warn: Performing check on tracker: BIP 02 (2 attempt) 
+2018-01-29T14:29:00.846Z - warn: Performing check on tracker: BIP 01 (2 attempt) 
+2018-01-29T14:29:00.846Z - error: Connection to modem failed: Error: Opening COM13: File not found 
+2018-01-29T14:30:00.177Z - warn: Modem not working properly 
+2018-01-29T14:30:00.177Z - warn: Performing check on tracker: BIP 02 (3 attempt) 
+2018-01-29T14:30:00.177Z - warn: Performing check on tracker: BIP 01 (3 attempt) 
+2018-01-29T14:30:00.177Z - error: Connection to modem failed: Error: Opening COM13: File not found 
+2018-01-29T14:31:00.534Z - warn: Modem not working properly 
+2018-01-29T14:31:00.534Z - error: Update on tracker BIP 02 failed 
+2018-01-29T14:31:00.534Z - error: Update on tracker BIP 01 failed 
+2018-01-29T14:31:00.550Z - error: Connection to modem failed: Error: Opening COM13: File not found 
+2018-01-29T14:31:00.972Z - info: Tracker modified: BIP 02 
+2018-01-29T14:31:01.581Z - info: Tracker modified: BIP 01 
+2018-01-29T14:42:49.791Z - info: Application initialized, dependencies loaded successfully 
+2018-01-29T14:42:49.842Z - error: Connection to modem failed: Error: Opening COM13: File not found 
+2018-01-29T14:42:51.889Z - info: Tracker added: BIP 02 
+2018-01-29T14:42:51.889Z - info: Tracker added: BIP 01 
+2018-01-29T14:42:51.889Z - info: Tracker added: Spot Tracker 
+2018-01-29T14:42:53.092Z - info: Successfully parsed tracker Spot Tracker XML feed 
+2018-01-29T14:42:54.278Z - info: Tracker modified: Spot Tracker 
+2018-01-29T14:43:00.859Z - warn: Modem not working properly 
+2018-01-29T14:43:00.859Z - error: Connection to modem failed: Error: Opening COM13: File not found 
+2018-01-29T14:44:00.170Z - warn: Modem not working properly 
+2018-01-29T14:44:00.177Z - error: Connection to modem failed: Error: Opening COM13: File not found 
+2018-01-29T14:48:47.770Z - info: Application initialized, dependencies loaded successfully 
+2018-01-29T14:48:47.828Z - error: Connection to modem failed: Error: Opening COM13: File not found 
+2018-01-29T14:48:49.973Z - info: Tracker added: BIP 02 
+2018-01-29T14:48:49.973Z - info: Tracker added: BIP 01 
+2018-01-29T14:48:49.973Z - info: Tracker added: Spot Tracker 
+2018-01-29T14:48:51.252Z - info: Successfully parsed tracker Spot Tracker XML feed 
+2018-01-29T14:48:52.365Z - info: Tracker modified: Spot Tracker 
+2018-01-29T14:49:00.850Z - warn: Modem not working properly 
+2018-01-29T14:49:00.850Z - error: Connection to modem failed: Error: Opening COM13: File not found 
+2018-01-29T14:50:00.266Z - warn: Modem not working properly 
+2018-01-29T14:50:00.266Z - error: Connection to modem failed: Error: Opening COM13: File not found 
+2018-01-29T14:51:00.677Z - warn: Modem not working properly 
+2018-01-29T14:51:00.677Z - error: Connection to modem failed: Error: Opening COM13: File not found 
+2018-01-29T14:52:00.064Z - warn: Modem not working properly 
+2018-01-29T14:52:00.064Z - error: Connection to modem failed: Error: Opening COM13: File not found 
+2018-01-29T14:53:00.400Z - warn: Modem not working properly 
+2018-01-29T14:53:00.415Z - error: Connection to modem failed: Error: Opening COM13: File not found 
+2018-01-29T14:54:00.805Z - warn: Modem not working properly 
+2018-01-29T14:54:00.821Z - error: Connection to modem failed: Error: Opening COM13: File not found 
+2018-01-29T14:54:02.089Z - info: Successfully parsed tracker Spot Tracker XML feed 
+2018-01-29T14:54:02.480Z - info: Tracker modified: Spot Tracker 
+2018-01-29T14:55:00.120Z - warn: Modem not working properly 
+2018-01-29T14:55:00.120Z - error: Connection to modem failed: Error: Opening COM13: File not found 
+2018-01-29T14:56:00.427Z - warn: Modem not working properly 
+2018-01-29T14:56:00.427Z - error: Connection to modem failed: Error: Opening COM13: File not found 
+2018-01-29T14:57:00.836Z - warn: Modem not working properly 
+2018-01-29T14:57:00.853Z - error: Connection to modem failed: Error: Opening COM13: File not found 
+2018-01-29T14:58:00.240Z - warn: Modem not working properly 
+2018-01-29T14:58:00.255Z - error: Connection to modem failed: Error: Opening COM13: File not found 
+2018-01-29T14:58:28.599Z - info: Application initialized, dependencies loaded successfully 
+2018-01-29T14:58:28.673Z - error: Connection to modem failed: Error: Opening COM7: Access denied 
+2018-01-29T14:58:30.786Z - info: Tracker added: BIP 02 
+2018-01-29T14:58:30.790Z - info: Tracker added: BIP 01 
+2018-01-29T14:58:30.793Z - info: Tracker added: Spot Tracker 
+2018-01-29T14:58:44.429Z - info: Application initialized, dependencies loaded successfully 
+2018-01-29T14:58:44.570Z - info: Modem connection open 
+2018-01-29T14:58:46.353Z - info: Tracker added: BIP 02 
+2018-01-29T14:58:46.370Z - info: Tracker added: BIP 01 
+2018-01-29T14:58:46.373Z - info: Tracker added: Spot Tracker 
+2018-01-29T15:00:01.973Z - info: Successfully parsed tracker Spot Tracker XML feed 
+2018-01-29T15:00:03.069Z - info: Tracker modified: Spot Tracker 
+2018-01-29T15:02:10.579Z - info: Update on tracker BIP 01 successfully finished. 
+2018-01-29T15:02:11.686Z - info: Tracker modified: BIP 01 
+2018-01-29T15:02:13.159Z - warn: Error sending sms to tracker BIP 01: +CMGS: 213
+ OK 
+2018-01-29T15:05:06.030Z - info: Application initialized, dependencies loaded successfully 
+2018-01-29T15:05:06.109Z - info: Modem connection open 
+2018-01-29T15:05:06.324Z - warn: Received SMS from unknown number 
+2018-01-29T15:05:08.099Z - info: Tracker added: BIP 02 
+2018-01-29T15:05:08.103Z - info: Tracker added: BIP 01 
+2018-01-29T15:05:08.105Z - info: Tracker added: Spot Tracker 
+2018-01-29T15:05:09.434Z - info: Successfully parsed tracker Spot Tracker XML feed 
+2018-01-29T15:05:09.840Z - info: Tracker modified: Spot Tracker 
+2018-01-29T15:06:30.138Z - info: Tracker modified: BIP 02 
+2018-01-29T15:06:45.235Z - info: Update on tracker BIP 02 successfully finished. 
+2018-01-29T15:08:17.684Z - info: Application initialized, dependencies loaded successfully 
+2018-01-29T15:08:17.790Z - info: Modem connection open 
+2018-01-29T15:08:19.545Z - info: Tracker added: BIP 02 
+2018-01-29T15:08:19.561Z - info: Tracker added: BIP 01 
+2018-01-29T15:08:19.561Z - info: Tracker added: Spot Tracker 
+2018-01-29T15:08:29.884Z - info: Update on tracker BIP 02 successfully finished. 
+2018-01-29T15:12:34.553Z - info: Application initialized, dependencies loaded successfully 
+2018-01-29T15:12:34.619Z - info: Modem connection open 
+2018-01-29T15:12:36.131Z - info: Tracker added: BIP 02 
+2018-01-29T15:12:36.142Z - info: Tracker added: BIP 01 
+2018-01-29T15:12:36.145Z - info: Tracker added: Spot Tracker 
+2018-01-29T15:12:37.382Z - info: Successfully parsed tracker Spot Tracker XML feed 
+2018-01-29T15:12:38.509Z - info: Tracker modified: Spot Tracker 
+2018-01-29T15:12:44.929Z - info: Update on tracker BIP 02 successfully finished. 
+2018-01-29T15:12:50.812Z - info: Tracker modified: BIP 02 
+2018-01-29T15:13:00.698Z - info: DELIVERY RECEIPT RECEIVED {
+  "smsc": "550112102010",
+  "reference": 216,
+  "sender": "67981977017",
+  "status": "00"
+}
+2018-01-29T15:13:00.703Z - info: Received delivery report from BIP 02 
+2018-01-29T15:13:00.843Z - info: DELIVERY RECEIPT RECEIVED {
+  "smsc": "550112102010",
+  "reference": 217,
+  "sender": "67981977017",
+  "status": "00"
+}
+2018-01-29T15:13:00.845Z - info: Received delivery report from BIP 02 
+2018-01-29T15:18:02.466Z - info: Successfully parsed tracker Spot Tracker XML feed 
+2018-01-29T15:18:02.904Z - info: Tracker modified: Spot Tracker 

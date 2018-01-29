@@ -1,74 +1,22 @@
 //Import log manager
-const winston = require('winston');
-
-//Define application log format
-const logFormat = winston.format.combine(
-  winston.format.timestamp(),
-  winston.format.printf(function (info) {
-    const { timestamp, level, message, ...args} = info;
-
-    return `${info.timestamp} - ${info.level}: ${info.message} ${Object.keys(args).length ? JSON.stringify(args, null, 2) : ''}`;
-  })
-);
-
-//Create application logger
-var logger = winston.createLogger({
-  transports: 
-  [
-    new winston.transports.Console({ 
-      format: winston.format.combine(winston.format.colorize(), logFormat),
-      handleExceptions: true
-    }), 
-    new winston.transports.File({ 
-      filename: 'logs/tracker_warning.log', 
-      level: 'warning', 
-      format: logFormat,
-      maxsize: 5000000, 
-      maxfiles: 10 }),
-    new winston.transports.File({ 
-      filename: 'logs/tracker_info.log', 
-      level: 'info', 
-      format: logFormat,
-      maxsize: 5000000, 
-      maxfiles:10 }),
-    new winston.transports.File({ 
-      filename: 'logs/tracker_debug.log', 
-      format: logFormat,
-      maxsize: 1000000, 
-      maxfiles: 20 })
-  ],
-  exceptionHandlers: [
-      new winston.transports.File({filename: 'logs/exceptions.log'})
-  ], 
-  exitOnError: false,
-  level: 'debug'
-});
+var winston = require('winston');
 
 //Import GSM modem package
 var modem = require('modem').Modem()
-
-//Used to reverse geocode latitude to address
-var NodeGeocoder = require('node-geocoder')
-
-//Initialize using google maps static api key
-var geocoder = NodeGeocoder({
-  provider: 'google',
-  apiKey: 'AIzaSyAq8QebBfeR7sVRKErHhmysSk5U80Zn3xE', // for Mapquest, OpenCage, Google Premier
-});
-
-//Used to search GSM tower cell geolocation
-var geolocation = require('geolocation-360');
-
-//Initialize using two providers (google and openCellId)
-geolocation.initialize({
-	googleApiKey: 'AIzaSyBBw803hHB7msBTnZ53YHdDWFPcJACIyCc',
-	openCellIdApiKey: '9d604982096e3a'
-});
 
 //Imports packages used to parse XML from remote stream
 var https = require('https');
 var parser = require('xml2js');
 var concat = require('concat-stream');
+
+//Used to reverse geocode latitude to address
+var NodeGeocoder = require('node-geocoder')
+
+//Used to search GSM tower cell geolocation
+var geolocation = require('geolocation-360');
+
+//Load task scheduler
+var cron = require('node-cron');
 
 //Load service account from local JSON file
 const serviceAccount = require("./firebaseAdmin.json");
@@ -76,30 +24,39 @@ const serviceAccount = require("./firebaseAdmin.json");
 //Import firebase admin SDK
 const admin = require("firebase-admin");
 
+//Initialize using google maps static api key
+var geocoder = NodeGeocoder({
+  provider: 'google',
+  apiKey: 'AIzaSyAq8QebBfeR7sVRKErHhmysSk5U80Zn3xE', // for Mapquest, OpenCage, Google Premier
+});
+
+//Initialize using two providers (google and openCellId)
+geolocation.initialize({
+	googleApiKey: 'AIzaSyBBw803hHB7msBTnZ53YHdDWFPcJACIyCc',
+	openCellIdApiKey: '9d604982096e3a'
+});
+
 //Initialize admin SDK
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: "https://tracker-d3d7e.firebaseio.com"
 });
 
-//Load Firebase Firestore DB manager
-db = admin.firestore()
-fcm = admin.messaging()
-
-//Log data
-//admin.firestore.setLogFunction(console.log);
-
-//Load task scheduler
-var cron = require('node-cron');
+//Load Firebase Firestore DB manager and Cloud Messaging
+db = admin.firestore();
+fcm = admin.messaging();
 
 //Schedule periodic check (every minute)
 cron.schedule('* * * * *', system_check);
 
 //Initialize tracker array
-var trackers = {}
+var trackers = {};
 
 //Initialize SMS array
-var sms_sent = {}
+var sms_sent = {};
+
+//Initialize logger
+var logger = initializeLog();
 
 //Log initalization
 logger.info('Application initialized, dependencies loaded successfully');
@@ -149,6 +106,52 @@ function system_check()
   }
 }
 
+function initializeLog()
+{
+  //Define application log format
+  const logFormat = winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.printf(function (info) {
+      const { timestamp, level, message, ...args} = info;
+
+      return `${info.timestamp} - ${info.level}: ${info.message} ${Object.keys(args).length ? JSON.stringify(args, null, 2) : ''}`;
+    })
+  );
+
+  //Create application logger
+  return winston.createLogger({
+    transports: 
+    [
+      new winston.transports.Console({ 
+        format: winston.format.combine(winston.format.colorize(), logFormat),
+        handleExceptions: true
+      }), 
+      new winston.transports.File({ 
+        filename: 'logs/tracker_warning.log', 
+        level: 'warning', 
+        format: logFormat,
+        maxsize: 5000000, 
+        maxfiles: 10 }),
+      new winston.transports.File({ 
+        filename: 'logs/tracker_info.log', 
+        level: 'info', 
+        format: logFormat,
+        maxsize: 5000000, 
+        maxfiles:10 }),
+      new winston.transports.File({ 
+        filename: 'logs/tracker_debug.log', 
+        format: logFormat,
+        maxsize: 1000000, 
+        maxfiles: 20 })
+    ],
+    exceptionHandlers: [
+        new winston.transports.File({filename: 'logs/exceptions.log'})
+    ], 
+    exitOnError: false,
+    level: 'debug'
+  });
+}
+
 function sendNotification(tracker_id, topic, params)
 {
   // Save tracker ID on param data
@@ -186,7 +189,7 @@ function initializeModem()
   });
 
   //Open connection on modem serial port
-  modem.open("COM13", result =>
+  modem.open("COM7", result =>
   {
     //Log data
     logger.info("Modem connection open");

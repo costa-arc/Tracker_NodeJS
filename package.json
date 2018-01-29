@@ -28,6 +28,7 @@
     "node-cron": "^1.2.1",
     "node-geocoder": "^3.21.1",
     "node-xcs": "^0.1.6",
+    "pdu": "^1.1.0",
     "serialport": "^6.0.4",
     "winston": "^3.0.0-rc1",
     "xml2js": "^0.4.19"
