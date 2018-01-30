@@ -217,7 +217,7 @@ function initializeModem()
     modem.execute("AT+CSMP=49,167,0,0");
 
     //Execute modem configuration (REQUEST SMS NOTIFICATION)
-    modem.execute("AT+CNMI=2, 1, 0, 2");
+    modem.execute("AT+CNMI=2,1,0,0");
 
     //On SMS received
     modem.on('sms received', function(sms) 
