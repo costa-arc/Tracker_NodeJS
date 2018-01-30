@@ -191,9 +191,6 @@ function initializeModem()
   //Open connection on modem serial port
   modem.open("COM7", result =>
   {
-    //Log data
-    logger.info("Modem connection open");
-
     //On command sent to modem
     modem.on('command', function(command) {
 
@@ -201,18 +198,32 @@ function initializeModem()
       logger.debug("Modem <- [" + command + "]");
     });
 
+    //Execute modem configuration (RESET MODEM)
+    modem.execute("ATEZ");
+
     //Execute modem configuration (DISABLE ECHO)
     modem.execute("ATE0");
+
+    //Execute modem configuration (ENABLE TX/RX)
+    modem.execute("AT+CFUN=1");
 
     //Execute modem configuration (SET PDU MODE)
     modem.execute("AT+CMGF=0");
 
+    //Execute modem configuration (ENABLE ERROR MESSAGES)
+    modem.execute("AT+CMEE=2");
+
+    //Execute modem configuration (REQUEST DELIVERY REPORT)
+    modem.execute("AT+CSMP=49,167,0,0");
+
+    //Execute modem configuration (REQUEST SMS NOTIFICATION)
+    modem.execute("AT+CNMI=2, 1, 0, 2");
+
     //On SMS received
-    modem.on('sms received', function(sms) {
-      
+    modem.on('sms received', function(sms) 
+    {
       //Call method to handle sms
       handleSMSReceived(sms);
-
     });
 
     //On data received from modem
@@ -258,6 +269,9 @@ function handleSMSReceived(sms)
     {
       //Just log data (delivery report is handled it's own method)
       logger.debug('Received SMS delivery report from ' + trackers[tracker_id].name);
+      
+      //Message not relevant, delete from memmory
+      modem.deleteMessage(sms);
     }
     else
     {
@@ -265,7 +279,11 @@ function handleSMSReceived(sms)
       db.collection("Tracker/" + tracker_id + "/SMS_Received").add({
         receivedTime: sms.time,
         text: sms.text.replace(/\0/g, '')
-      });
+      }).then(() => 
+      {
+        // Message already saved on DB, delete from modem memmory
+        modem.deleteMessage(sms);
+      });;;
 
       //Send notification to users subscribed on this topic
       sendNotification(tracker_id, "NotifySMSResponse", {
@@ -285,6 +303,9 @@ function handleSMSReceived(sms)
       {
         //Log warning
         logger.warn("Failed to parse message from tracker " + tracker + ": Unknown model");
+
+        //Message already parsed, delete from memmory
+        modem.deleteMessage(sms);
       }
     }
   }
@@ -299,6 +320,9 @@ function handleSMSReceived(sms)
       receivedTime: sms.time,
       text: sms.text.replace(/\0/g, '')
     });
+    
+    //Message already parsed, delete from memmory
+    modem.deleteMessage(sms);
   }
 }
 
@@ -495,20 +519,15 @@ function send_sms(id, tracker, command, callback)
     text: command,
     encoding:'16bit'
   }, 
-  function(err, sent_ids) 
+  function(result, message_id) 
   {
     //if any error ocurred
-    if(err || sent_ids == 'timeout')
-    {
-      //Log error
-      logger.warn('Error sending sms to tracker ' + tracker.name + ': ' + err);
-    }
-    else
+    if(result == "SENT")
     {
       //Save SMS sent on firestore DB
       db.collection("Tracker/" + id + "/SMS_Sent").add({
         text: command,
-        reference: sent_ids[0],
+        reference: message_id,
         sentTime: new Date(),
         receivedTime: null,
         status: 'ENROUTE'
@@ -516,10 +535,10 @@ function send_sms(id, tracker, command, callback)
       .then(function(docRef) 
       {
         //Log data
-        logger.debug("SMS command [" + command + "] sent to tracker " + tracker.name + ": Reference: #" + sent_ids[0] + " -> Firestore ID: " +  docRef.id);
+        logger.debug("SMS command [" + command + "] sent to tracker " + tracker.name + ": Reference: #" + message_id + " -> Firestore ID: " +  docRef.id);
 
         //Save on sms_sent array
-        sms_sent[sent_ids[0]] = { 
+        sms_sent[message_id] = { 
           text: command, 
           id: docRef.id,
           tracker_id: id
@@ -528,12 +547,17 @@ function send_sms(id, tracker, command, callback)
       .catch(function(error) 
       {
         //Log warning
-        logger.warn("SMS command [" + command + "] sent to tracker " + tracker.name + ": Reference: #" + sent_ids[0] + " -> Could not save on firestore: " + error);
+        logger.warn("SMS command [" + command + "] sent to tracker " + tracker.name + ": Reference: #" + message_id + " -> Could not save on firestore: " + error);
       });
 
       //Invoke callback if provided
       if(callback)
         callback();
+    }
+    else
+    {
+      //Log error
+      logger.warn('Error sending sms to tracker ' + tracker.name + ': ' + result);
     }
   });
 }
@@ -588,50 +612,13 @@ function updateSPOT(tracker_id, tracker)
   });
 }
 
-function updateLastCheck(id, tracker, currentDate)
-{
-  //Run check on tracker right now
-  var tracker_reference = db.collection('Tracker').doc(id);
-
-  //Update tracker lastcheck
-  tracker_reference.update('lastCheck', currentDate);
-
-  //Change value locally (offline persistence, avoid multiple updates if no internet connection)
-  tracker.lastCheck = currentDate;
-  
-  //Clear update attempts counter
-  tracker.updateAttempts = 0;
-}
-
-function searchTracker(phoneNumber)
-{
-  //For each tracker loaded in application
-  for(var id in trackers)
-  {
-    //Check if identification equals phone number
-    if(trackers[id].identification === phoneNumber.replace('+','').replace('55', ''))
-    {
-      //return tracker id
-      return id;
-    }
-  }
-
-  //Tracker not found, return null
-  return null;
-}
-
 function parseTK102B(tracker_id, sms) 
 {
   //Remove null bytes from string
   sms_text = sms.text.replace(/\0/g, '')
 
   //Check if received just confirmation to SMS delivery
-  if(sms_text.indexOf('Torpedo SMS entregue') >= 0)
-  {
-    //Log info
-    logger.info('Received SMS delivery message from tracker: ' + trackers[tracker_id].name);
-  }
-  else if(sms_text.startsWith('GSM: '))
+  if(sms_text.startsWith('GSM: '))
   {
     //Get signal level from SMS text
     index = sms_text.indexOf('GSM: ') + 'GSM: '.length;
@@ -645,7 +632,7 @@ function parseTK102B(tracker_id, sms)
     db.doc("Tracker/" + tracker_id).update({
       signalLevel: signal_level,
       batteryLevel: battery_level
-    });
+    })
 
     //Send notification to users subscribed on this topic
     sendNotification(tracker_id, "NotifyStatus", {
@@ -729,6 +716,39 @@ function parseTK102B(tracker_id, sms)
     //Log warning
     logger.warn('Unable to parse message from TK102B model: ' + sms_text);
   }
+}
+
+
+function updateLastCheck(id, tracker, currentDate)
+{
+  //Run check on tracker right now
+  var tracker_reference = db.collection('Tracker').doc(id);
+
+  //Update tracker lastcheck
+  tracker_reference.update('lastCheck', currentDate);
+
+  //Change value locally (offline persistence, avoid multiple updates if no internet connection)
+  tracker.lastCheck = currentDate;
+  
+  //Clear update attempts counter
+  tracker.updateAttempts = 0;
+}
+
+function searchTracker(phoneNumber)
+{
+  //For each tracker loaded in application
+  for(var id in trackers)
+  {
+    //Check if identification equals phone number
+    if(trackers[id].identification === phoneNumber.replace('+','').replace('55', ''))
+    {
+      //return tracker id
+      return id;
+    }
+  }
+
+  //Tracker not found, return null
+  return null;
 }
 
 //Return the distance in meters between to coordinates
