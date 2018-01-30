@@ -216,14 +216,18 @@ function initializeModem()
     //Execute modem configuration (REQUEST DELIVERY REPORT)
     modem.execute("AT+CSMP=49,167,0,0");
 
-    //Execute modem configuration (REQUEST SMS NOTIFICATION)
-    modem.execute("AT+CNMI=2,1,0,0");
+    //Execute modem configuration (REQUEST SMS NOTIFICATION - DLINK)
+    modem.execute("AT+CNMI=2,1,0,1,0");
+
+    //Execute modem configuration (REQUEST SMS NOTIFICATION - HUAWEI)
+    modem.execute("AT+CNMI=2,1,0,2,0");
 
     //On SMS received
     modem.on('sms received', function(sms) 
     {
       //Call method to handle sms
       handleSMSReceived(sms);
+
     });
 
     //On data received from modem
@@ -240,10 +244,10 @@ function initializeModem()
       handleDeliveryReport(delivery_report);
     });
 
-    //On modem memmory full warning
+    //On modem memmory full
     modem.on('memory full', function(sms) 
     {
-      //Execute modem configuration (DELETE ALL MESSAGES)
+      //Execute modem command (DELETE ALL MESSAGES)
       modem.execute("AT+CMGD=1,4", function(escape_char, response) 
       {
         //Log data
