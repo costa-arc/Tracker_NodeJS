@@ -53578,3 +53578,52 @@ OK]
 2018-01-29T15:28:27.168Z - info: Tracker added: Spot Tracker 
 2018-01-29T15:28:27.168Z - debug: Next check on tracker Spot Tracker in 34 seconds 
 2018-01-29T15:28:32.634Z - debug: Modem -> [^RSSI: 9] 
+2018-01-30T12:23:02.213Z - info: Application initialized, dependencies loaded successfully 
+2018-01-30T12:23:02.215Z - debug: Initializing listener on Tracker collection 
+2018-01-30T12:23:02.307Z - error: Connection to modem failed: Error: Opening C:\Program Files\nodejs\node.exe: Unknown error code 123 
+2018-01-30T12:23:04.447Z - info: Tracker added: BIP 02 
+2018-01-30T12:23:04.449Z - debug: Next check on tracker BIP 02 in 10040 seconds 
+2018-01-30T12:23:04.450Z - info: Tracker added: BIP 01 
+2018-01-30T12:23:04.451Z - debug: Next check on tracker BIP 01 in 2949 seconds 
+2018-01-30T12:23:04.452Z - info: Tracker added: Spot Tracker 
+2018-01-30T12:23:04.452Z - debug: Performing check on tracker: Spot Tracker 
+2018-01-30T12:23:05.928Z - info: Successfully parsed tracker Spot Tracker XML feed 
+2018-01-30T12:23:22.735Z - info: Application initialized, dependencies loaded successfully 
+2018-01-30T12:23:22.738Z - debug: Initializing listener on Tracker collection 
+2018-01-30T12:23:22.785Z - error: Connection to modem failed: Error: Opening C:\Users\Admin\Desktop\Tracker_NodeJS\tracker.js: Unknown error code 123 
+2018-01-30T12:23:24.670Z - info: Tracker added: BIP 02 
+2018-01-30T12:23:24.672Z - debug: Next check on tracker BIP 02 in 10020 seconds 
+2018-01-30T12:23:24.673Z - info: Tracker added: BIP 01 
+2018-01-30T12:23:24.674Z - debug: Next check on tracker BIP 01 in 2929 seconds 
+2018-01-30T12:23:24.675Z - info: Tracker added: Spot Tracker 
+2018-01-30T12:23:24.676Z - debug: Performing check on tracker: Spot Tracker 
+2018-01-30T12:23:25.846Z - info: Successfully parsed tracker Spot Tracker XML feed 
+2018-01-30T12:23:26.948Z - info: Tracker modified: Spot Tracker 
+2018-01-30T12:23:26.950Z - debug: Next check on tracker Spot Tracker in 299 seconds 
+2018-01-30T12:24:15.741Z - info: Application initialized, dependencies loaded successfully 
+2018-01-30T12:24:18.473Z - debug: Initializing listener on Tracker collection 
+2018-01-30T12:24:18.603Z - debug: Modem <- [ATEZ] 
+2018-01-30T12:24:18.608Z - debug: Modem -> [^RSSI: 6,,^RSSI: 8,,^MODE: 3,3,,^RSSI: 14,,^RSSI: 15,,^RSSI: 14,,^RSSI: 12,,^MODE: 3,2,,^RSSI: 8,,^RSSI: 9,,^RSSI: 7,,^RSSI: 7,,^RSSI: 6,,^RSSI: 5,,^RSSI: 7,,^RSSI: 8,,^MODE: 3,3,,^RSSI: 11,,^MODE: 3,2,,^RSSI: 10,,^RSSI: 8,,^RSSI: 9,,^RSSI: 8,,^RSSI: 6,,^MODE: 3,3,,^RSSI: 13,,^RSSI: 14,,^MODE: 3,2,,^RSSI: 11,,^RSSI: 10,,^RSSI: 9,,^RSSI: 7,,^RSSI: 9,,^RSSI: 7,,^RSSI: 7,,^RSSI: 6,,^RSSI: 7,,^RSSI: 6,,^MODE: 3,3,,^RSSI: 15,,^MODE: 3,2,,^RSSI: 6,,^RSSI: 8,,^RSSI: 6,,^RSSI: 8,,^RSSI: 6,,^RSSI: 7,,^RSSI: 6,,^MODE: 3,3,,^RSSI: 13,,^RSSI: 14,,^RSSI: 16,,^RSSI: 14,,^RSSI: 13,,^RSSI: 14,,^MODE: 3,2,,^RSSI: 8,,^RSSI: 7,,^RSSI: 6,,^MODE: 3,3,,^RSSI: 13,,^RSSI: 11,,^RSSI: 10,,^RSSI: 11,,^RSSI: 10,,^MODE: 3,2,,^RSSI: 7,,^RSSI: 6,,^RSSI: 7,,^RSSI: 6,,^RSSI: 4,,^RSSI: 6,,^MODE: 3,3,,^RSSI: 15,,^MODE: 3,2,,^RSSI: 7,,^RSSI: 6,,^RSSI: 8,,^RSSI: 7,,^MODE: 3,3,,^RSSI: 15,,^RSSI: 15] 
+2018-01-30T12:24:18.631Z - debug: Modem -> [OK] 
+2018-01-30T12:24:18.633Z - debug: Modem <- [ATE0] 
+2018-01-30T12:24:18.635Z - debug: Modem -> [ATE0] 
+2018-01-30T12:24:18.650Z - debug: Modem -> [OK] 
+2018-01-30T12:24:18.652Z - debug: Modem <- [AT+CFUN=1] 
+2018-01-30T12:24:18.671Z - debug: Modem -> [OK] 
+2018-01-30T12:24:18.671Z - debug: Modem <- [AT+CMGF=0] 
+2018-01-30T12:24:18.689Z - debug: Modem -> [OK] 
+2018-01-30T12:24:18.690Z - debug: Modem <- [AT+CMEE=2] 
+2018-01-30T12:24:18.707Z - debug: Modem -> [OK] 
+2018-01-30T12:24:18.708Z - debug: Modem <- [AT+CSMP=49,167,0,0] 
+2018-01-30T12:24:18.739Z - debug: Modem -> [OK] 
+2018-01-30T12:24:18.740Z - debug: Modem <- [AT+CNMI=2, 1, 0, 2] 
+2018-01-30T12:24:18.765Z - debug: Modem -> [OK] 
+2018-01-30T12:24:19.543Z - debug: Modem -> [^MODE: 3,2] 
+2018-01-30T12:24:19.559Z - debug: Modem -> [^RSSI: 8] 
+2018-01-30T12:24:19.719Z - debug: Modem -> [^RSSI: 9] 
+2018-01-30T12:24:20.493Z - info: Tracker added: BIP 02 
+2018-01-30T12:24:20.495Z - debug: Next check on tracker BIP 02 in 9964 seconds 
+2018-01-30T12:24:20.496Z - info: Tracker added: BIP 01 
+2018-01-30T12:24:20.497Z - debug: Next check on tracker BIP 01 in 2873 seconds 
+2018-01-30T12:24:20.497Z - info: Tracker added: Spot Tracker 
+2018-01-30T12:24:20.498Z - debug: Next check on tracker Spot Tracker in 245 seconds 

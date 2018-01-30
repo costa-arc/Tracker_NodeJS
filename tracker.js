@@ -189,7 +189,7 @@ function initializeModem()
   });
 
   //Open connection on modem serial port
-  modem.open("COM7", result =>
+  modem.open(process.argv[2], result =>
   {
     //On command sent to modem
     modem.on('command', function(command) {
