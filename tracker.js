@@ -1,13 +1,18 @@
-//Import log manager
-var winston = require('winston');
-
 //Import GSM modem package
 var modem = require('modem').Modem()
+
+//Import log manager
+var winston = require('winston');
 
 //Imports packages used to parse XML from remote stream
 var https = require('https');
 var parser = require('xml2js');
 var concat = require('concat-stream');
+
+//Imports package used to create a TCP server
+var net = require('net');
+var readline = require('readline');
+var lastConn = null;
 
 //Used to reverse geocode latitude to address
 var NodeGeocoder = require('node-geocoder')
@@ -61,6 +66,9 @@ var logger = initializeLog();
 //Log initalization
 logger.info('Application initialized, dependencies loaded successfully');
 
+//Initialize TCP Server
+initializeTCPServer();
+
 //Initialize modem
 initializeModem();
 
@@ -92,10 +100,7 @@ function system_check()
   else
   {
     //Log warning
-    logger.warn("Modem not working properly")
-
-    //Try to reinitialize modem connection
-    initializeModem()
+    logger.warn("Periodic check: Modem not working properly")
   }
 
   //Perform check on trackers
@@ -152,30 +157,6 @@ function initializeLog()
   });
 }
 
-function sendNotification(tracker_id, topic, params)
-{
-  // Save tracker ID on param data
-  params.id = tracker_id;
-
-  // Create topic structure
-  topic = tracker_id + "_" + topic;
-
-  // Send a message to devices subscribed to the provided topic.
-  fcm.sendToTopic(topic, { data: params }, 
-  {
-    priority: "high",
-    timeToLive: 60 * 60 * 24,
-    collapseKey: topic
-  })
-  .then(function(response) {
-    // See the MessagingTopicResponse reference documentation for the
-    logger.debug("Successfully sent message to topic " + topic + ":", response);
-  })
-  .catch(function(error) {
-    logger.warn("Error sending message to topic " + topic + ":", error);
-  });
-}
-
 function initializeModem()
 {
   //Error handling'
@@ -186,6 +167,7 @@ function initializeModem()
 
     //Close connection to modem
     modem.close();
+
   });
 
   //Open connection on modem serial port
@@ -199,7 +181,7 @@ function initializeModem()
     });
 
     //Execute modem configuration (RESET MODEM)
-    modem.execute("ATEZ");
+    modem.execute("ATZ");
 
     //Execute modem configuration (DISABLE ECHO)
     modem.execute("ATE0");
@@ -216,11 +198,21 @@ function initializeModem()
     //Execute modem configuration (REQUEST DELIVERY REPORT)
     modem.execute("AT+CSMP=49,167,0,0");
 
-    //Execute modem configuration (REQUEST SMS NOTIFICATION - DLINK)
-    modem.execute("AT+CNMI=2,1,0,1,0");
-
-    //Execute modem configuration (REQUEST SMS NOTIFICATION - HUAWEI)
-    modem.execute("AT+CNMI=2,1,0,2,0");
+    //Execute modem command (REQUEST MANUFACTURER)
+    modem.execute("AT+CGMI", function(response)
+    {
+      //If this is a HUAWEI MODEM
+      if(response.includes('huawei'))
+      {
+        //Execute modem configuration (REQUEST SMS NOTIFICATION - HUAWEI)
+        modem.execute("AT+CNMI=2,1,0,2,0");
+      }
+      else
+      {
+        //Execute modem configuration (REQUEST SMS NOTIFICATION - DLINK)
+        modem.execute("AT+CNMI=2,1,0,1,0");
+      }
+    });
 
     //On SMS received
     modem.on('sms received', function(sms) 
@@ -254,7 +246,62 @@ function initializeModem()
         logger.info("Modem memory full, erasing SMS: " + response)
       });
     });
+
+    //On modem connection closed
+     modem.on('close', function() 
+     {
+      //Log warning 
+      logger.debug("Modem connection closed, trying to open again...");
+
+      //Initialize modem again in 5 seconds
+      setTimeout(initializeModem, 5000);
+     });
+  });
+}
+
+function initializeTCPServer()
+{
+  var server = net.createServer();  
+  server.on('connection', handleConnection);
+
+  server.listen(5001, function() {  
+    logger.info('TCP server listening to port: ' +  server.address().port);
+  });
+
+  var rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    terminal: false
+  });
+
+  rl.on('line', function(line){
+    lastConn.write(line);
+    logger.debug("TCP (" + lastConn.remoteAddress + ") <- [" + line + "]")
   })
+}
+
+function handleConnection(conn) 
+{  
+  logger.info('TCP (' +  conn.remoteAddress + ") -> Connected");
+
+  conn.setEncoding('utf8');
+  conn.on('data', onConnData);
+  conn.once('close', onConnClose);
+  conn.on('error', onConnError);
+
+  lastConn = conn;
+
+  function onConnData(d) {
+    logger.debug("TCP (" + conn.remoteAddress + ') -> [' + d.replace(/\r?\n|\r/, '') + ']');
+  }
+
+  function onConnClose() {
+    logger.info('TCP (' +  conn.remoteAddress + ") -> Disconnected");
+  }
+
+  function onConnError(err) {
+    logger.error('TCP (' +  conn.remoteAddress + ") -> Error: " + err.message);
+  }
 }
 
 function handleSMSReceived(sms)
@@ -390,6 +437,30 @@ function handleDeliveryReport(delivery_report)
     //Log warning
     logger.warn("Received delivery report from unknown number: " + delivery_report.sender);
   }
+}
+
+function sendNotification(tracker_id, topic, params)
+{
+  // Save tracker ID on param data
+  params.id = tracker_id;
+
+  // Create topic structure
+  topic = tracker_id + "_" + topic;
+
+  // Send a message to devices subscribed to the provided topic.
+  fcm.sendToTopic(topic, { data: params }, 
+  {
+    priority: "high",
+    timeToLive: 60 * 60 * 24,
+    collapseKey: topic
+  })
+  .then(function(response) {
+    // See the MessagingTopicResponse reference documentation for the
+    logger.debug("Successfully sent message to topic " + topic + ":", response);
+  })
+  .catch(function(error) {
+    logger.warn("Error sending message to topic " + topic + ":", error);
+  });
 }
 
 //Get a real time updates from Firestore DB -> Tracker collection
