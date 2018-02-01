@@ -25,6 +25,7 @@
     "geolocation-360": "^1.2.6",
     "grpc": "^1.8.4",
     "modem": "^1.0.3",
+    "moment": "^2.20.1",
     "node-cron": "^1.2.1",
     "node-geocoder": "^3.21.1",
     "node-xcs": "^0.1.6",
