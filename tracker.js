@@ -60,6 +60,9 @@ var trackers = {};
 //Initialize SMS array
 var sms_sent = {};
 
+//Initialize XML responses array
+var xmlResponses = [];
+
 //Initialize logger
 var logger = initializeLog();
 
@@ -278,6 +281,9 @@ function initializeTCPServer()
     //On receive data from TCP connection
     conn.on('data', data => {
 
+      //Log data received
+      logger.debug("TCP (" + conn.remoteAddress + ') -> [' + data.replace(/\r?\n|\r/, '') + ']');
+
       //Check if data received is from a ST910/ST940 model
       if(data.startsWith("ST910"))
       {
@@ -290,8 +296,6 @@ function initializeTCPServer()
         logger.warn("TCP data received from unknown tracker model");
       }
 
-      //Log data received
-      logger.debug("TCP (" + conn.remoteAddress + ') -> [' + data.replace(/\r?\n|\r/, '') + ']');
     });
 
     //On TCP connection close
@@ -341,7 +345,8 @@ function handleSMSReceived(sms)
     else
     {
       //Save message on firestore DB
-      db.collection("Tracker/" + tracker_id + "/SMS_Received").doc(Date.now().toString())
+      db.collection("Tracker/" + tracker_id + "/SMS_Received")
+      .doc(moment().format('YYYY/MM/DD_hh:mm:ss:SSS'))
       .set(
       {
         receivedTime: sms.time,
@@ -384,12 +389,14 @@ function handleSMSReceived(sms)
     logger.warn("Received SMS from unknown number");
 
     //Save on firestore DB global SMS Received collection
-    db.collection("SMS_Received").doc(Date.now().toString()).set(
-    {
-      from: sms.sender,
-      receivedTime: sms.time,
-      text: sms.text.replace(/\0/g, '')
-    });
+    db.collection("SMS_Received")
+      .doc(moment().format('YYYY/MM/DD_hh:mm:ss:SSS'))
+      .set(
+      {
+        from: sms.sender,
+        receivedTime: sms.time,
+        text: sms.text.replace(/\0/g, '')
+      });
     
     //Message already parsed, delete from memmory
     modem.deleteMessage(sms);
@@ -533,7 +540,7 @@ function checkTracker(id, tracker)
   const currentDate = new Date();
 
   //Check if need to run check on tracker now
-  if(tracker.lastCheck == null || (currentDate - tracker.lastCheck) / 1000 > tracker.updateInterval * 60)
+  if(tracker.lastCheck == null || (currentDate - tracker.lastCheck) / 1000 > tracker.updateInterval * 60 || tracker.model === "SPOT")
   {
     //Check tracker already tried to update more than 3 times
     if(tracker.updateAttempts >= 3)
@@ -619,34 +626,36 @@ function send_sms(id, tracker, command, callback)
     if(result == "SENT")
     {
       //Create an ID based on current datetime
-      sms_id = Date.now().toString();
+      sms_id = moment().format('YYYY/MM/DD_hh:mm:ss:SSS');
 
       //Save SMS sent on firestore DB
-      db.collection("Tracker/" + id + "/SMS_Sent").doc(sms_id).set(
-      {
-        text: command,
-        reference: message_id,
-        sentTime: new Date(),
-        receivedTime: null,
-        status: 'ENROUTE'
-      })
-      .then(function(docRef) 
-      {
-        //Log data
-        logger.debug("SMS command [" + command + "] sent to tracker " + tracker.name + ": Reference: #" + message_id + " -> Firestore ID: " +  sms_id);
+      db.collection("Tracker/" + id + "/SMS_Sent")
+        .doc(sms_id)
+        .set(
+        {
+          text: command,
+          reference: message_id,
+          sentTime: new Date(),
+          receivedTime: null,
+          status: 'ENROUTE'
+        })
+        .then(function(docRef) 
+        {
+          //Log data
+          logger.debug("SMS command [" + command + "] sent to tracker " + tracker.name + ": Reference: #" + message_id + " -> Firestore ID: " +  sms_id);
 
-        //Save on sms_sent array
-        sms_sent[message_id] = { 
-          text: command, 
-          id: sms_id,
-          tracker_id: id
-        };
-      })
-      .catch(function(error) 
-      {
-        //Log warning
-        logger.warn("SMS command [" + command + "] sent to tracker " + tracker.name + ": Reference: #" + message_id + " -> Could not save on firestore: " + error);
-      });
+          //Save on sms_sent array
+          sms_sent[message_id] = { 
+            text: command, 
+            id: sms_id,
+            tracker_id: id
+          };
+        })
+        .catch(function(error) 
+        {
+          //Log warning
+          logger.warn("SMS command [" + command + "] sent to tracker " + tracker.name + ": Reference: #" + message_id + " -> Could not save on firestore: " + error);
+        });
 
       //Invoke callback if provided
       if(callback)
@@ -688,9 +697,61 @@ function updateSPOT(tracker_id, tracker)
           try 
           {
             //For each result in feed
-            result.response.feedMessageResponse[0].messages[0].message.forEach(message => 
+            result.response.feedMessageResponse[0].messages[0].message.reverse().forEach(function(message,index) 
             {
-              //console.log(message);
+              //Check if this was not parsed before
+              if(!xmlResponses.includes(message["id"][0]))
+              {
+                //Check if this coordinate exists on DB
+                db.doc("Tracker/" + tracker_id + "/Coordinates/" + message["id"][0])
+                  .get()
+                  .then(docSnapshot => 
+                  {
+                    //if not added yet
+                    if (!docSnapshot.exists) 
+                    {
+                      //Create coordinate object
+                      coordinates = new admin.firestore.GeoPoint(parseFloat(message['latitude'][0]), parseFloat(message['longitude'][0]));
+
+                      //Parse datetime
+                      datetime = moment.utc(message['dateTime'][0], "YYYY-MM-DDThh:mm:ss").toDate();
+
+                      //Parse speed
+                      speed = (message['messageType'][0] === ("NEWMOVEMENT") ? 30 : 0);
+
+                      //Parse battery level
+                      batteryLevel = (message["batteryState"][0] === "GOOD" ? 80 : 30);
+
+                      //Define tracker params to be updated
+                      tracker_params = 
+                      {
+                        batteryLevel: batteryLevel,
+                        signalLevel: 100,
+                        lastCheck: new Date(),
+                        lastCoordinateType: "GPS",
+                        lastCoordinate: coordinates,
+                        lastUpdate: datetime
+                      };
+
+                      //Define coordinates params to be inserted/updated
+                      coordinate_params = 
+                      {
+                        id: message["id"][0],
+                        datetime: datetime,
+                        signalLevel: 100,
+                        batteryLevel: batteryLevel,
+                        position: coordinates,
+                        speed: speed
+                      }
+
+                      //Insert coordinates
+                      setTimeout(function() { insert_coordinates(tracker_id, tracker_params, coordinate_params) }, index*1000);
+
+                      //Save on parsed xml responses
+                      xmlResponses.push(message["id"][0]);
+                    }
+                  });
+              }
             });
 
             //On success, update last check on tracker
@@ -782,8 +843,6 @@ function parseTK102B(tracker_id, sms)
         //Define tracker params to be updated
         tracker_params = 
         {
-          identification: tracker_id,
-          model: "TK 102B",
           lastCoordinateType: "GSM",
           lastCoordinate: coordinates,
           lastUpdate: new Date()
@@ -830,8 +889,6 @@ function parseTK102B(tracker_id, sms)
     //Define tracker params to be updated
     tracker_params = 
     {
-      identification: tracker_id,
-      model: "TK 102B",
       lastCoordinateType: "GPS",
       lastCoordinate: coordinates,
       lastUpdate: new Date()
@@ -844,7 +901,7 @@ function parseTK102B(tracker_id, sms)
       signalLevel: trackers[tracker_id].signalLevel,
       datetime: new Date(),
       position: coordinates,
-      speed: speed
+      speed: parseFloat(speed)
     }
       
     //Insert coordinates on DB
@@ -864,32 +921,29 @@ function parseST940(data, conn)
   var values = data.split(';');
 
   //"ST910;Emergency;696478;500;20180201;12:26:55;-23.076226;-054.206427;000.367;000.00;1;4.1;0;1;02;1865;c57704f358;724;18;-397;1267;255;3;25\r"
-  if(values[0] === "ST910")
+  if(values[0] === "ST910" && (values[1] === 'Emergency' || values[1] === 'Alert' || values[1] === 'Location'))
   {
     //Get tracker ID
     id = values[2];
 
     //Parse datetime
-    datetime =  moment(values[4] + "-" + values[5], "YYYYMMDD-hh;mm;ss");
+    datetime =  moment.utc(values[4] + "-" + values[5], "YYYYMMDD-hh;mm;ss").toDate();
 
     //Parse coordinate
-    coordinates = new admin.firestore.GeoPoint(values[6], values[7]);
+    coordinates = new admin.firestore.GeoPoint(parseFloat(values[6]), parseFloat(values[7]));
 
     //Parse speed
-    speed = values[8];
+    speed = parseFloat(values[8]);
 
     //Battery level
-    batteryLevel = ((values[11]-2.8)/0.7)*100;
-
-    //Update tracker battery level
-    trackers[id].batteryLevel = batteryLevel;
+    batteryLevel = (parseFloat(values[11]) - 2.8) * 71;
 
     //Define tracker params to be updated
     tracker_params = 
     {
-      identification: id,
-      model: "ST940",
       batteryLevel: batteryLevel,
+      signalLevel: 0,
+      lastCheck: new Date(),
       lastCoordinateType: "GPS",
       lastCoordinate: coordinates,
       lastUpdate: datetime
@@ -898,15 +952,70 @@ function parseST940(data, conn)
     //Define coordinates params to be inserted/updated
     coordinate_params = 
     {
-      signalLevel: 0,
       datetime: datetime,
+      signalLevel: 0,
       batteryLevel: batteryLevel,
       position: coordinates,
       speed: speed
     }
-      
-    //Insert coordinates on DB
-    insert_coordinates(id, tracker_params, coordinate_params);
+
+    //If there is an loaded tracker with this id
+    if(trackers[id])
+    {
+      //Insert coordinates on DB
+      insert_coordinates(id, tracker_params, coordinate_params);
+          
+      //Send ACK command to tracker
+      sendACK(id, values[0], conn);
+    }
+    else
+    {
+      //Check on DB if there is a tracker with this ID
+      db.doc("Tracker/" + id)
+        .get()
+        .then(docSnapshot => 
+        {
+          //if there is no tracker with this ID
+          if (!docSnapshot.exists) 
+          {
+            //Log info
+            logger.info("New tracker (ST940#" + id + ") detected, inserting on DB.")
+            
+            //Else, create an entry on DB
+            tracker_params.name = "Novo - ST940";
+            tracker_params.model = "ST940";
+            tracker_params.description = "Adicionado automaticamente";
+            tracker_params.identification = id;
+            tracker_params.updateInterval = 60;
+
+            //Choose a random color to new tracker
+            tracker_params.backgroundColor = ['#99ff0000', '#99ffe600', '#99049f1e', '#99009dff', '#9900ffee'][Math.floor((Math.random() * 4) + 1)]
+          }
+
+          //Insert new coordinates on DB
+          insert_coordinates(id, tracker_params, coordinate_params);
+          
+          //Send ACK command to tracker
+          sendACK(id, values[0], conn);
+        });
+    }
+  }
+}
+
+function sendACK(id, model, conn)
+{
+  try
+  {
+    //Send ACK command to tracker
+    conn.write('AT^'+ model + ';ACK;' + id);
+
+    //Log data
+    logger.debug('TCP (' + conn.remoteAddress + ') <- [AT^'+ model + ';ACK;' + id + ']')
+  }
+  catch(error)
+  {
+    //Log error
+    logger.error('Error sending ACK to tracker #' + id);
   }
 }
 
@@ -954,6 +1063,7 @@ function insert_coordinates(tracker_id, tracker_params, coordinate_params)
       //Get latest coordinate from this tracker
       db.collection('Tracker/' + tracker_id + '/Coordinates')
       .orderBy('datetime', 'desc')
+      .where('datetime', '<=', coordinate_params.datetime)
       .limit(1)
       .get()
       .then(function(querySnapshot) 
@@ -964,6 +1074,9 @@ function insert_coordinates(tracker_id, tracker_params, coordinate_params)
         //If no coordinates available or the distance is less than 50 meters from current position
         if(lastCoordinate == null || distance(coordinate_params.position, lastCoordinate.data().position) > 50)
         {
+          //Get coordinate ID if available
+          coordinate_id = (coordinate_params.id ? coordinate_params.id : moment(new Date()).format('YYYY_MM_DD_hh_mm_ss_SSS'));
+          
           //Log data
           logger.debug("Requesting reverse geocoding", coordinate_params.position);
 
@@ -979,7 +1092,7 @@ function insert_coordinates(tracker_id, tracker_params, coordinate_params)
 
             //Insert coordinates with geocoded address
             db.collection('Tracker/' + tracker_id + "/Coordinates")
-              .doc(Date.now().toString())
+              .doc(coordinate_id)
               .set(coordinate_params)
             
             //Send notification to users subscribed on this topic
@@ -1000,7 +1113,7 @@ function insert_coordinates(tracker_id, tracker_params, coordinate_params)
 
             //Insert coordinates without geocoded address
             db.collection('Tracker/' + tracker_id + "/Coordinates")
-              .doc(Date.now().toString())
+              .doc(coordinate_id)
               .set(coordinate_params)
 
             //Send notification to users subscribed on this topic
