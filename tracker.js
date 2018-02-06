@@ -346,7 +346,7 @@ function handleSMSReceived(sms)
     {
       //Save message on firestore DB
       db.collection("Tracker/" + tracker_id + "/SMS_Received")
-      .doc(moment().format('YYYY/MM/DD_hh:mm:ss:SSS'))
+      .doc(moment().format('YYYY_MM_DD_hh_mm_ss_SSS'))
       .set(
       {
         receivedTime: sms.time,
@@ -390,7 +390,7 @@ function handleSMSReceived(sms)
 
     //Save on firestore DB global SMS Received collection
     db.collection("SMS_Received")
-      .doc(moment().format('YYYY/MM/DD_hh:mm:ss:SSS'))
+      .doc(moment().format('YYYY_MM_DD_hh_mm_ss_SSS'))
       .set(
       {
         from: sms.sender,
@@ -629,7 +629,7 @@ function send_sms(id, tracker, command, callback)
     if(result == "SENT")
     {
       //Create an ID based on current datetime
-      sms_id = moment().format('YYYY/MM/DD_hh:mm:ss:SSS');
+      sms_id = moment().format('YYYY_MM_DD_hh_mm_ss_SSS');
 
       //Save SMS sent on firestore DB
       db.collection("Tracker/" + id + "/SMS_Sent")
