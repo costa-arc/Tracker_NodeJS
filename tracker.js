@@ -20,9 +20,6 @@ var NodeGeocoder = require('node-geocoder')
 //Used to search GSM tower cell geolocation
 var geolocation = require('geolocation-360');
 
-//Load task scheduler
-var cron = require('node-cron');
-
 //Load service account from local JSON file
 const serviceAccount = require("./firebaseAdmin.json");
 
@@ -52,7 +49,11 @@ db = admin.firestore();
 fcm = admin.messaging();
 
 //Schedule periodic check (every minute)
-cron.schedule('* * * * *', system_check);
+setInterval(system_check, 60 * 1000);
+
+//Get process params
+comPort = process.argv[2];
+serverName = process.argv[3];
 
 //Initialize tracker array
 var trackers = {};
@@ -175,7 +176,7 @@ function initializeModem()
   });
 
   //Open connection on modem serial port
-  modem.open(process.argv[2], result =>
+  modem.open(comPort, result =>
   {
     //On command sent to modem
     modem.on('command', function(command) {
@@ -215,6 +216,31 @@ function initializeModem()
       {
         //Execute modem configuration (REQUEST SMS NOTIFICATION - DLINK)
         modem.execute("AT+CNMI=2,1,0,1,0");
+      }
+    });
+
+    //Execute modem command (REQUEST PHONE NUMBER)
+    modem.execute("AT+CNUM", function(response)
+    {
+      //Get start index from the phone number
+      var startIndex = response.indexOf('55');
+
+      //If this is a HUAWEI MODEM
+      if(startIndex > 0)
+      {
+        //Remove first part of response string
+        response = response.substring(startIndex);
+
+        //Get phone number
+        modem.phoneNumber = response.substring(2, response.indexOf('"'));
+
+        //Log information
+        logger.info("Modem phone number retrieved: " + modem.phoneNumber);
+      }
+      else
+      {
+        //Log error
+        logger.error("Error retrieving phone number: " + response);
       }
     });
 
@@ -349,6 +375,7 @@ function handleSMSReceived(sms)
       .doc(moment().format('YYYY/MM/DD_hh:mm:ss:SSS'))
       .set(
       {
+        to: modem.phoneNumber, 
         receivedTime: sms.time,
         text: sms.text.replace(/\0/g, '')
       })
@@ -360,7 +387,7 @@ function handleSMSReceived(sms)
       });
 
       //Send notification to users subscribed on this topic
-      sendNotification(tracker_id, "NotifySMSResponse", {
+      sendNotification(tracker_id, "NotifyAvailable", {
         title: "Recebimento de SMS",
         content: "SMS enviado pelo rastreador foi recebido.",
         expanded: "SMS enviado pelo rastreador foi recebido: \n\n" + sms.text.replace(/\0/g, ''),
@@ -390,9 +417,11 @@ function handleSMSReceived(sms)
 
     //Save on firestore DB global SMS Received collection
     db.collection("SMS_Received")
-      .doc(moment().format('YYYY/MM/DD_hh:mm:ss:SSS'))
+      .doc(moment().format('YYYY_MM_DD_hh_mm_ss_SSS'))
       .set(
       {
+        server: serverName,
+        to: modem.phoneNumber, 
         from: sms.sender,
         receivedTime: sms.time,
         text: sms.text.replace(/\0/g, '')
@@ -534,89 +563,154 @@ function monitorTrackers()
     });
 }
 
-function checkTracker(id, tracker)
+function checkTracker(tracker_id)
 {
   //Get current datetime
-  const currentDate = new Date();
+  var currentDate = new Date();
 
-  //Check if need to run check on tracker now
-  if(tracker.lastCheck == null || (currentDate - tracker.lastCheck) / 1000 > tracker.updateInterval * 60 || tracker.model === "SPOT")
+  db
+  .collection("Tracker/" + tracker_id + "/Configurations")
+  .get()
+  .then(configurations => 
   {
-    //Check tracker already tried to update more than 3 times
-    if(tracker.updateAttempts >= 3)
+    //For each available configuration from this tracker
+    configurations.forEach(function(config) 
     {
-      //In this case, consider update failed (stop trying to update)
-      updateLastCheck(id, tracker, currentDate);
+      //Get data from document snapshot
+      config = config.data();
 
-      //Log error
-      logger.error("Update on tracker " + tracker.name + " failed");
+      //If a new config is REQUESTED, or last update on this config is more than one day
+      if(config.status.step === "REQUESTED" || currentDate - config.status.datetime > (1000*60*60*24))
+      {
+        //Check if config can be executed (is not running on other server)
+        if(checkConfigProgress(config))
+        {
+          //Save change on DB
+          db.doc("Tracker/" + tracker_id + "/Configurations/" + config.name).set(config);
+
+          //Get tracker model
+          switch(trackers[tracker_id].model)
+          {
+            case "tk102b":
+
+              //Call method to configure TK 102B device
+              configTK102b(tracker_id, config);
+              break;
+            
+            case "st940":
+
+              //Call method to configure Suntech ST-940 device
+              configST940(tracker_id, config);
+              break;
+          }
+        }
+      }
+    });
+  })
+  .catch(function(error) 
+  {
+      //Log error message
+      logger.error("Error getting tracker configuration: ", error);
+  });  
+}
+
+function checkConfigProgress(config)
+{
+  //Check if update is already in progress
+  if(config.status.inProgress)
+  {
+    //If this is the server currently applying configuration
+    if(config.status.server == serverName)
+    {
+      //Increase update attempt counter
+      config.status.updateAttempt++
+    }
+    else if(config.status.updateAttempt > 3)
+    {
+      //Other server already tried to execute this config more than 3 times
+      config.status.server = serverName;
+
+      //This server will now begin to apply this configuration
+      config.status.updateAttempt = 1;
     }
     else
     {
-      //If this is the first attempt to update tracker
-      if(tracker.updateAttempts == 0)
-      {
-        //Log as debug
-        logger.debug('Performing check on tracker: ' + tracker.name);
-      }
-      else
-      {
-        //Log as warning (first try failed)
-        logger.warn('Performing check on tracker: ' + tracker.name + " (" + (tracker.updateAttempts + 1) + " attempt)");
-      }
-
-      //Increase atempts counter
-      tracker.updateAttempts++;
-
-      //Check tracker model
-      if(tracker.model === "TK 102B")
-      {
-        //Perform check on TK102B model tracker
-        updateTK102B(id, tracker, currentDate);
-      }
-      else if(tracker.model === "SPOT")
-      {
-        //Perform check on TK102B model tracker
-        updateSPOT(id, tracker);
-      }
-      else
-      {
-        //Log warning
-        logger.warn("Update requested on unknown traker model: " + tracker.model);
-
-        //Update last check (no updates performed)
-        updateLastCheck(id, tracker, currentDate);
-      }
+      //Other server is currently trying to update this configuration, wait for result
+      return false;
     }
-  } 
+  }
   else
   {
-    //Log data
-    logger.debug('Next check on tracker ' + tracker.name + ' in ' + Math.round(tracker.updateInterval * 60 - (currentDate - tracker.lastCheck) / 1000) + ' seconds');
-  }    
+    //Set config in proggress flag
+    config.status.inProgress = true;
+    config.status.server = serverName;
+    config.status.updateAttempt = 1;
+  }
+
+  //Config is ready to be sent to tracker
+  return true;
 }
 
-function updateTK102B(id, tracker, currentDate)
+
+function configTK102b(tracker_id, configuration)
 {
-  //Send SMS to request position and define callback
-  send_sms(id, tracker, 'smslink123456', function() {
+  //Command to be sent by SMS to this tracker
+  var command;
 
-    //On success, update last check on tracker
-    updateLastCheck(id, tracker, currentDate)
+  //Check configuration name
+  switch(configuration.name)
+  {
+    case "MoveOut":
+      //Move out alert
+      command = 'move123456 ' + configuration.value;
+      break;
 
-    //Log data
-    logger.info("Update on tracker " + tracker.name + " successfully finished.")
+    case "OverSpeed":
+      //Speed limit alert
+      command = 'speed123456 ' + configuration.value;
+      break;
+
+    case "PeriodicUpdate":
+
+      //Send SMS to request position and define callback
+      command = 't' + configuration.value + 's***n123456';
+      break;
+
+    case "Shock":
+
+      //Send SMS to request position and define callback
+      command = 'shock123456';
+      break;
+
+    case "StatusCheck":
+
+      //Send SMS to request position and define callback
+      command = 'check123456';
+      break;
+  }
+
+  //Send SMS to request command
+  send_sms(id, command, function () {
+
+    //Update configuration data on SMS successfully sent
+    configuration.status.step = "SMS_SENT";
+    configuration.status.description = "Status: Mensagem enviada ao rastreador...";
+    configuration.status.inProgress = false;
+    configuration.status.datetime = new Date();
+
+    //Save data on firestore DB
+    db
+    .collection("Tracker/" + id + "/Configurations")
+    .doc(configuration.name)
+    .set(configuration);
   });
-
-  //Send SMS to request status (no callback required)
-  send_sms(id, tracker, 'check123456');
 }
 
-function send_sms(id, tracker, command, callback)
+function send_sms(id, command, callback)
 {
   //Send command to request current position
   modem.sms({
-    receiver: tracker.identification,
+    receiver: trackers[id].identification,
     text: command,
     encoding:'16bit'
   }, 
@@ -626,13 +720,15 @@ function send_sms(id, tracker, command, callback)
     if(result == "SENT")
     {
       //Create an ID based on current datetime
-      sms_id = moment().format('YYYY/MM/DD_hh:mm:ss:SSS');
+      sms_id = moment().format('YYYY_MM_DD_hh:mm:ss:SSS');
 
       //Save SMS sent on firestore DB
       db.collection("Tracker/" + id + "/SMS_Sent")
         .doc(sms_id)
         .set(
         {
+          server: process.argv[3],
+          from: modem.phoneNumber,
           text: command,
           reference: message_id,
           sentTime: new Date(),
@@ -642,7 +738,7 @@ function send_sms(id, tracker, command, callback)
         .then(function(docRef) 
         {
           //Log data
-          logger.debug("SMS command [" + command + "] sent to tracker " + tracker.name + ": Reference: #" + message_id + " -> Firestore ID: " +  sms_id);
+          logger.debug("SMS command [" + command + "] sent to tracker " + trackers[id].name + ": Reference: #" + message_id + " -> Firestore ID: " +  sms_id);
 
           //Save on sms_sent array
           sms_sent[message_id] = { 
@@ -654,7 +750,7 @@ function send_sms(id, tracker, command, callback)
         .catch(function(error) 
         {
           //Log warning
-          logger.warn("SMS command [" + command + "] sent to tracker " + tracker.name + ": Reference: #" + message_id + " -> Could not save on firestore: " + error);
+          logger.warn("SMS command [" + command + "] sent to tracker " + trackers[id].name + ": Reference: #" + message_id + " -> Could not save on firestore: " + error);
         });
 
       //Invoke callback if provided
