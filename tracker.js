@@ -61,7 +61,7 @@ var trackers = {};
 var sms_sent = {};
 
 //Initialize XML responses array
-var xmlResponses = [];
+var parsedXML = [];
 
 //Initialize logger
 var logger = initializeLog();
@@ -463,6 +463,9 @@ function handleDeliveryReport(delivery_report)
     //Log warning
     logger.warn("Received delivery report from unknown number: " + delivery_report.sender);
   }
+  
+  //Delete message from inbox
+  modem.deleteMessage(delivery_report);
 }
 
 function sendNotification(tracker_id, topic, params)
@@ -540,7 +543,7 @@ function checkTracker(id, tracker)
   const currentDate = new Date();
 
   //Check if need to run check on tracker now
-  if(tracker.lastCheck == null || (currentDate - tracker.lastCheck) / 1000 > tracker.updateInterval * 60 || tracker.model === "SPOT")
+  if(tracker.lastCheck == null || (currentDate - tracker.lastCheck) / 1000 > tracker.updateInterval * 60)
   {
     //Check tracker already tried to update more than 3 times
     if(tracker.updateAttempts >= 3)
@@ -696,63 +699,77 @@ function updateSPOT(tracker_id, tracker)
         {
           try 
           {
+            //Initialize array of itens to be inserted on DB
+            var insertArray = [];
+
             //For each result in feed
-            result.response.feedMessageResponse[0].messages[0].message.reverse().forEach(function(message,index) 
+            result.response.feedMessageResponse[0].messages[0].message.reverse().forEach(message => 
             {
               //Check if this was not parsed before
-              if(!xmlResponses.includes(message["id"][0]))
+              if(!parsedXML.includes(message["id"][0]))
               {
-                //Check if this coordinate exists on DB
-                db.doc("Tracker/" + tracker_id + "/Coordinates/" + message["id"][0])
-                  .get()
-                  .then(docSnapshot => 
+                //Parse coordinate datetime
+                datetime = moment.utc(message['dateTime'][0], "YYYY-MM-DDThh:mm:ss").toDate();
+
+                //If this is a new coordinate
+                if(datetime > tracker.lastUpdate)
+                {
+                  //Create coordinate object
+                  coordinates = new admin.firestore.GeoPoint(parseFloat(message['latitude'][0]), parseFloat(message['longitude'][0]));
+
+                  //Parse speed
+                  speed = (message['messageType'][0] === ("NEWMOVEMENT") ? 30 : 0);
+
+                  //Parse battery level
+                  batteryLevel = (message["batteryState"][0] === "GOOD" ? 80 : 30);
+
+                  //Append coordinates params to be inserted/updated
+                  insertArray.push( 
                   {
-                    //if not added yet
-                    if (!docSnapshot.exists) 
-                    {
-                      //Create coordinate object
-                      coordinates = new admin.firestore.GeoPoint(parseFloat(message['latitude'][0]), parseFloat(message['longitude'][0]));
-
-                      //Parse datetime
-                      datetime = moment.utc(message['dateTime'][0], "YYYY-MM-DDThh:mm:ss").toDate();
-
-                      //Parse speed
-                      speed = (message['messageType'][0] === ("NEWMOVEMENT") ? 30 : 0);
-
-                      //Parse battery level
-                      batteryLevel = (message["batteryState"][0] === "GOOD" ? 80 : 30);
-
-                      //Define tracker params to be updated
-                      tracker_params = 
-                      {
-                        batteryLevel: batteryLevel,
-                        signalLevel: 100,
-                        lastCheck: new Date(),
-                        lastCoordinateType: "GPS",
-                        lastCoordinate: coordinates,
-                        lastUpdate: datetime
-                      };
-
-                      //Define coordinates params to be inserted/updated
-                      coordinate_params = 
-                      {
-                        id: message["id"][0],
-                        datetime: datetime,
-                        signalLevel: 100,
-                        batteryLevel: batteryLevel,
-                        position: coordinates,
-                        speed: speed
-                      }
-
-                      //Insert coordinates
-                      setTimeout(function() { insert_coordinates(tracker_id, tracker_params, coordinate_params) }, index*1000);
-
-                      //Save on parsed xml responses
-                      xmlResponses.push(message["id"][0]);
-                    }
+                    id: message["id"][0],
+                    datetime: datetime,
+                    signalLevel: 100,
+                    batteryLevel: batteryLevel,
+                    position: coordinates,
+                    speed: speed
                   });
+
+                  //Save on parsed xml responses
+                  parsedXML.push(message["id"][0]);
+                }
+                else
+                {
+                  //Old coordinate, add to parsed xml array
+                  parsedXML.push(message["id"][0]);
+                }
               }
             });
+
+            //If there is any item to be inserted/updated
+            if(insertArray.length > 0)
+            {
+              //Array index
+              var index = 0
+
+              //For each item on array
+              for(; index < insertArray.length; index++)
+              {
+                //Insert coordinates on DB
+                setTimeout(checkCoordinates.bind(this, tracker_id, insertArray[index - 1], insertArray[index]), index*1500);
+              }
+
+              //Define tracker params to be updated
+              db.doc('Tracker/' + tracker_id)
+                .set(
+                {
+                  batteryLevel: insertArray[index-1].batteryLevel,
+                  signalLevel: 100,
+                  lastCheck: new Date(),
+                  lastCoordinateType: "GPS",
+                  lastCoordinate: insertArray[index-1].position,
+                  lastUpdate: insertArray[index-1].datetime
+                }, { merge: true });
+            }
 
             //On success, update last check on tracker
             updateLastCheck(tracker_id, tracker, new Date());
@@ -966,7 +983,7 @@ function parseST940(data, conn)
       insert_coordinates(id, tracker_params, coordinate_params);
           
       //Send ACK command to tracker
-      sendACK(id, values[0], conn);
+      sendACK(values, conn);
     }
     else
     {
@@ -996,29 +1013,31 @@ function parseST940(data, conn)
           insert_coordinates(id, tracker_params, coordinate_params);
           
           //Send ACK command to tracker
-          sendACK(id, values[0], conn);
+          sendACK(values, conn);
         });
     }
   }
 }
 
-function sendACK(id, model, conn)
+function sendACK(values, conn)
 {
   try
   {
-    //Send ACK command to tracker
-    conn.write('AT^'+ model + ';ACK;' + id);
+    if(values[1] === "Emergency")
+    {
+      //Send ACK command to tracker
+      conn.write('AT^'+ values[0] + ';ACK;' + values[2]);
 
-    //Log data
-    logger.debug('TCP (' + conn.remoteAddress + ') <- [AT^'+ model + ';ACK;' + id + ']')
+      //Log data
+      logger.debug('TCP (' + conn.remoteAddress + ') <- [AT^'+ values[0] + ';ACK;' + values[2] + ']')
+    }
   }
   catch(error)
   {
     //Log error
-    logger.error('Error sending ACK to tracker #' + id);
+    logger.error('Error sending ACK to tracker #' + values[2]);
   }
 }
-
 
 function updateLastCheck(id, tracker, currentDate)
 {
@@ -1069,89 +1088,18 @@ function insert_coordinates(tracker_id, tracker_params, coordinate_params)
       .then(function(querySnapshot) 
       {
         //Get result from query
-        lastCoordinate = querySnapshot.docs[0];
+        var lastCoordinate;
         
-        //If no coordinates available or the distance is less than 50 meters from current position
-        if(lastCoordinate == null || distance(coordinate_params.position, lastCoordinate.data().position) > 50)
+        //Check if there is any last coordinate available
+        if(!querySnapshot.isEmpty)
         {
-          //Get coordinate ID if available
-          coordinate_id = (coordinate_params.id ? coordinate_params.id : moment(new Date()).format('YYYY_MM_DD_hh_mm_ss_SSS'));
-          
-          //Log data
-          logger.debug("Requesting reverse geocoding", coordinate_params.position);
-
-          //Geocode address
-          geocoder.reverse({
-            lat: coordinate_params.position.latitude, 
-            lon: coordinate_params.position.longitude
-          })
-          .then(function(res) 
-          {
-            //Save geocoding result (textual address)
-            coordinate_params.address = res[0].formattedAddress;
-
-            //Insert coordinates with geocoded address
-            db.collection('Tracker/' + tracker_id + "/Coordinates")
-              .doc(coordinate_id)
-              .set(coordinate_params)
-            
-            //Send notification to users subscribed on this topic
-            sendNotification(tracker_id, "NotifyMovement", {
-              title: "Alerta de movimentação",
-              content: res[0].formattedAddress,
-              coordinates: coordinate_params.position.latitude + "," + coordinate_params.position.longitude,
-              datetime: Date.now().toString()
-            });
-
-            //Log info
-            logger.info('Successfully parsed location message from: ' + trackers[tracker_id].name + " - Coordinate inserted");
-          })
-          .catch(function(err) 
-          {  
-            //Error geocoding address
-            coordinate_params.address = "Endereço próximo à coordenada não disponível."
-
-            //Insert coordinates without geocoded address
-            db.collection('Tracker/' + tracker_id + "/Coordinates")
-              .doc(coordinate_id)
-              .set(coordinate_params)
-
-            //Send notification to users subscribed on this topic
-            sendNotification(tracker_id, "NotifyMovement", {
-              title: "Alerta de movimentação",
-              content: "Coordenadas: " + coordinates.latitude + "," + coordinates.longitude,
-              coordinates: coordinate_params.position.latitude + "," + coordinate_params.position.longitude,
-              datetime: Date.now().toString()
-            });
-
-            //Log warning
-            logger.warn('Parsed ' + type + ' location message from: ' + trackers[tracker_id].name + " - Geocoding failed: " + err);
-          }); 
+          //Save data from last coordinate
+          lastCoordinate = querySnapshot.docs[0].data();
+          lastCoordinate.id = querySnapshot.docs[0].id;
         }
-        else
-        {
-          //Save current date time (updating last coordinate)
-          coordinate_params.lastDatetime = coordinate_params.datetime;
-
-          //Remove datetime from params to preserve initial coordinate datetime
-          delete coordinate_params.datetime;
-
-          //Current coordinates is too close from previous, just update last coordinate
-          db.collection('Tracker/' + tracker_id + "/Coordinates")
-            .doc(lastCoordinate.id)
-            .update(coordinate_params);
-
-          //Send notification to users subscribed on this topic
-          sendNotification(tracker_id, "NotifyStopped", {
-            title: "Alerta de permanência",
-            content: "Rastreador permanece na mesma posição.",
-            coordinates: coordinate_params.position.latitude + "," + coordinate_params.position.longitude,
-            datetime: Date.now().toString()
-          });
-          
-          //Log info
-          logger.info('Successfully parsed location message from: ' + trackers[tracker_id].name + " - Coordinate updated");
-        }
+        
+        //Calculate distance between coordinates to insert new coordinates or update last one
+        checkCoordinates(tracker_id, lastCoordinate, coordinate_params)
       })
       .catch(function(error) 
       {
@@ -1160,6 +1108,88 @@ function insert_coordinates(tracker_id, tracker_params, coordinate_params)
       });
 
     })
+}
+
+function checkCoordinates(tracker_id, lastCoordinate, coordinate_params)
+{
+  //If no coordinates available or the distance is less than 50 meters from current position
+  if(lastCoordinate == null || distance(coordinate_params.position, lastCoordinate.position) > 50)
+  {
+    //Get coordinate ID if available
+    coordinate_id = (coordinate_params.id ? coordinate_params.id : moment(new Date()).format('YYYY_MM_DD_hh_mm_ss_SSS'));
+    
+    //Log data
+    logger.debug("Requesting reverse geocoding", coordinate_params.position);
+
+    //Geocode address
+    geocoder.reverse({
+      lat: coordinate_params.position.latitude, 
+      lon: coordinate_params.position.longitude
+    })
+    .then(function(res) 
+    {
+      //Save geocoding result (textual address)
+      coordinate_params.address = res[0].formattedAddress;
+
+      //Insert coordinates with geocoded address
+      db.collection('Tracker/' + tracker_id + "/Coordinates")
+        .doc(coordinate_id)
+        .set(coordinate_params)
+      
+      //Send notification to users subscribed on this topic
+      sendNotification(tracker_id, "NotifyMovement", {
+        title: "Alerta de movimentação",
+        content: res[0].formattedAddress,
+        coordinates: coordinate_params.position.latitude + "," + coordinate_params.position.longitude,
+        datetime: Date.now().toString()
+      });
+
+      //Log info
+      logger.info('Successfully parsed location message from: ' + trackers[tracker_id].name + " - Coordinate inserted");
+    })
+    .catch(function(err) 
+    {  
+      //Error geocoding address
+      coordinate_params.address = "Endereço próximo à coordenada não disponível."
+
+      //Insert coordinates without geocoded address
+      db.collection('Tracker/' + tracker_id + "/Coordinates")
+        .doc(coordinate_id)
+        .set(coordinate_params)
+
+      //Send notification to users subscribed on this topic
+      sendNotification(tracker_id, "NotifyMovement", {
+        title: "Alerta de movimentação",
+        content: "Coordenadas: " + coordinates.latitude + "," + coordinates.longitude,
+        coordinates: coordinate_params.position.latitude + "," + coordinate_params.position.longitude,
+        datetime: Date.now().toString()
+      });
+
+      //Log warning
+      logger.warn('Parsed location message from: ' + trackers[tracker_id].name + " - Geocoding failed: " + err);
+    }); 
+  }
+  else
+  {
+    //Create a new field on previous coordinate (updating last coordinate)
+    lastCoordinate.lastDatetime = coordinate_params.datetime;
+
+    //Current coordinates is too close from previous, just update last coordinate
+    db.collection('Tracker/' + tracker_id + "/Coordinates")
+      .doc(lastCoordinate.id)
+      .set(lastCoordinate, {merge: true});
+
+    //Send notification to users subscribed on this topic
+    sendNotification(tracker_id, "NotifyMovement", {
+      title: "Alerta de permanência",
+      content: "Rastreador permanece na mesma posição.",
+      coordinates: coordinate_params.position.latitude + "," + coordinate_params.position.longitude,
+      datetime: Date.now().toString()
+    });
+    
+    //Log info
+    logger.info('Successfully parsed location message from: ' + trackers[tracker_id].name + " - Coordinate updated");
+  }
 }
 
 function formatPhoneNumber(number)
