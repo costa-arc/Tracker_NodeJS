@@ -9,7 +9,7 @@
             "request": "launch",
             "console": "integratedTerminal",
             "name": "Tracker",
-            "program": "${workspaceFolder}\\tracker.js",
+            "program": "${workspaceFolder}\\server.js",
             "args": [ "COM3", "TrackerBIP" ]
         }
     ]
