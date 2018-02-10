@@ -102,7 +102,7 @@ tcp_parser.on('data', (tcp_socket, data) =>
             logger.info("New tracker (ST940@" + data.source + ") detected, inserting on DB.")
             
             //Initialize tracker array
-            var tracker_params = { lastUpdate: {status: "REQUESTED"}};
+            var tracker_params = {};
 
             //Else, create an entry on DB
             tracker_params.name = "ST940 - ID(" + data.source + ")";
@@ -158,26 +158,30 @@ function monitorTrackers()
         logger.info("Tracker " + docChange.type + ": " + docChange.doc.get('name'));
     
         //If tracker is inserted or updated
-        if(docChange.type === 'added' || docChange.doc.get('lastUpdate').status == "REQUESTED")
+        if(docChange.type === 'added' || docChange.doc.get('lastUpdate') == null)
         {
 
-          //Save tracker on array
-          switch(docChange.doc.get('model'))
+          //If this tracker is not currently loaded
+          if(!trackers[id])
           {
-            case 'tk102b': 
-              //Create an instance of a TK102B tracker model
-              trackers[id] = new TK102B(id, sms_parser, google_services);
-              break;
+            //Save tracker on array
+            switch(docChange.doc.get('model'))
+            {
+              case 'tk102b': 
+                //Create an instance of a TK102B tracker model
+                trackers[id] = new TK102B(id, sms_parser, google_services);
+                break;
 
-            case 'st940':
-              //Create an instance of a ST940 tracker model
-              trackers[id] = new ST940(id, tcp_parser, google_services);
-              break;
+              case 'st940':
+                //Create an instance of a ST940 tracker model
+                trackers[id] = new ST940(id, tcp_parser, google_services);
+                break;
 
-            case 'spot':
-              //Create an instance of a SPOT Trace tracker model
-              trackers[id] = new SPOT(id, http_parser, google_services);
-              break;
+              case 'spot':
+                //Create an instance of a SPOT Trace tracker model
+                trackers[id] = new SPOT(id, http_parser, google_services);
+                break;
+            }
           }
     
           //Load data on tracker

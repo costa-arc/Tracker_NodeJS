@@ -91,7 +91,12 @@ class ST940 extends Tracker
         else if(data[1] === 'Alive')
         {
             //Log connection alive
-            logger.info("Tracker ST940@" + data[2] + " connected.");
+            logger.info("Tracker ST940@" + this.getID() + " connected.");
+        }
+        else if(data[1] === 'RES')
+        {
+            //Log commmand response
+            logger.info("Tracker ST940@" + this.getID() + " confirmed last command.");
         }
         else
         {

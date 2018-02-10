@@ -255,7 +255,7 @@ class Tracker
                         }, notification);
 
                         //Log info
-                        logger.info('Successfully parsed location message from: ' + self.get('name') + " - Coordinate inserted");
+                        logger.info('Successfully parsed location message from: ' + self.getID() + " - Coordinate inserted");
                     })
                     .catch((error) =>
                     {  
@@ -271,13 +271,13 @@ class Tracker
                         //Send notification to users subscribed on this topic
                         self.sendNotification("Notify_Movement", {
                             title: "Alerta de movimentação",
-                            content: "Coordenadas: " + coordinates.latitude + "," + coordinates.longitude,
+                            content: "Coordenadas: " + coordinate_params.position.latitude + "," + coordinate_params.position.longitude,
                             coordinates: coordinate_params.position.latitude + "," + coordinate_params.position.longitude,
                             datetime: Date.now().toString()
                         }, notification);
 
                         //Log warning
-                        logger.warn('Parsed location message from: ' + self.get('name') + " - Geocoding failed: " + error);
+                        logger.warn('Parsed location message from: ' + this.getID() + " - Geocoding failed: " + error);
                     }); 
                 }
                 else

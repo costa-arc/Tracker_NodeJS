@@ -45,13 +45,14 @@ class TCP_Parser extends EventEmitter
                 //Split data using ';' separator
                 var content = data.split(';');
 
-                //Check if data received is from a ST910/ST940 model
+                //Check if data received is from a ST910/ST940 model 
+                //TODO: PRESET message
                 if(content[2])
                 {
                     //Call method to handle tcp data
                     this.emit('data', conn,
                     { 
-                        source: content[2], 
+                        source: (content[1] == 'RES' ? content[3].trim() : content[2].trim()), 
                         content: content
                     });
                 }

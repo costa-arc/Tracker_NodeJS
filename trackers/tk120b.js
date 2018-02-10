@@ -13,7 +13,7 @@ class TK102B extends Tracker
     constructor(id, sms_parser, google_services) 
     {
         //Call parent constructor
-        super(id, sms_parser, google_services)
+        super(id, sms_parser, google_services);
     }
 
     checkConfigurations()
@@ -25,7 +25,7 @@ class TK102B extends Tracker
         var lastUpdate = this.get('lastUpdate');
 
         //Check if an update is requested, or if last update caused an error on a diferent server, or if last update occurred more then half our ago
-        if(lastUpdate.status === "REQUESTED" || (lastUpdate.status == "ERROR" && lastUpdate.server != this.getServerName()) || currentDate - lastUpdate.datetime > 1000*60*10)
+        if(lastUpdate == null || (lastUpdate.status == "ERROR" && lastUpdate.server != this.getServerName()) || currentDate - lastUpdate.datetime > 1000*60*10)
         {
             //For each available configuration from this tracker
             for (let config of this._configurations)
@@ -52,13 +52,13 @@ class TK102B extends Tracker
             //Check if there is any pending configuration
             if(this._pending_configs.length > 0)
             {
-                //Initialize a new update
-                lastUpdate.status = "PENDING";
-                lastUpdate.server = this.getServerName();
-                lastUpdate.datetime = currentDate;
-
                 //Update tracker to indicate pending configuration
-                this.getDB().doc('Tracker/' + this.getID()).update('lastUpdate', lastUpdate);
+                this.getDB().doc('Tracker/' + this.getID()).update('lastUpdate', 
+                {
+                    status: "PENDING",
+                    server: this.getServerName(),
+                    datetime: currentDate
+                });
 
                 //Run method to execute configurations
                 this.applyConfigurations();
@@ -102,28 +102,28 @@ class TK102B extends Tracker
             
             //Update tracker to indicate configuration finished
             this.getDB()
-            .collection('Tracker')
-            .doc(this.getID())
-            .update('lastUpdate', lastUpdate)
-            .then(() => 
-            {
-                //Check no errors ocurred during update
-                if(lastUpdate.status == "SUCCESS")
+                .collection('Tracker')
+                .doc(this.getID())
+                .update('lastUpdate', lastUpdate)
+                .then(() => 
                 {
-                    //Log info
-                    logger.info('Configurations on tracker ' + self.get('name') + ' finished successfully, updating status...');
-                }
-                else
+                    //Check no errors ocurred during update
+                    if(lastUpdate.status == "SUCCESS")
+                    {
+                        //Log info
+                        logger.info('Configurations on tracker ' + self.get('name') + ' finished successfully, updating status...');
+                    }
+                    else
+                    {
+                        //Log error
+                        logger.error('Configurations on tracker ' + self.get('name') + ' failed on this server, updating status...');
+                    }
+                })
+                .catch(error =>
                 {
                     //Log error
-                    logger.error('Configurations on tracker ' + self.get('name') + ' failed on this server, updating status...');
-                }
-            })
-            .catch(error =>
-            {
-                //Log error
-                logger.error('Could not update tracker ' + self.get('name') + ' status on Firestore DB: ' + error);
-            })
+                    logger.error('Could not update tracker ' + self.get('name') + ' status on Firestore DB: ' + error);
+                })
         }
         else
         {
@@ -305,20 +305,20 @@ class TK102B extends Tracker
 
                 //Save message on firestore DB
                 this.getDB()
-                .collection("Tracker/" + this.getID() + "/SMS_Received")
-                .doc(data.datetime)
-                .set(
-                {
-                    to: this.getParser().getPhoneNumber(),
-                    receivedTime: sms.time,
-                    text: sms_text
-                })
-                .then(function () 
-                {
-                    // Message already saved on DB, delete from modem memmory
-                    this.getParser().deleteMessage(sms);
+                    .collection("Tracker/" + this.getID() + "/SMS_Received")
+                    .doc(data.datetime)
+                    .set(
+                    {
+                        to: this.getParser().getPhoneNumber(),
+                        receivedTime: sms.time,
+                        text: sms_text
+                    })
+                    .then(function () 
+                    {
+                        // Message already saved on DB, delete from modem memmory
+                        this.getParser().deleteMessage(sms);
 
-                }.bind(this));
+                    }.bind(this));
 
                 //Send notification to users subscribed on this topic
                 this.sendNotification("Notify_Available", {
