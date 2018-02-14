@@ -88,6 +88,11 @@ class TK102B extends Tracker
                     //INITIAL CONFIGURATION: Set this server as tracker admin
                     command = "admin123456 " + this.getParser().getPhoneNumber();
                     break;
+
+                case "Location":
+                    //Send SMS to configure shock alert
+                    command = "smslink123456";
+                    break;
                     
                 case "MoveOut":
                     //Move out alert
@@ -394,7 +399,7 @@ class TK102B extends Tracker
                 });
 
                 //Check if text is response from a configuration
-                if(sms_text.includes('notn ok!'))
+                if(sms_text.includes('notn ok'))
                 {
                     //Confirm configuration disabled
                     this.confirmConfiguration('PeriodicUpdate', false, sms_text);
@@ -404,7 +409,7 @@ class TK102B extends Tracker
                     //Confirm configuration enabled
                     this.confirmConfiguration('PeriodicUpdate', true, sms_text);
                 }
-                else if(sms_text.includes('noshock ok!'))
+                else if(sms_text.includes('noshock ok'))
                 {
                     //Confirm configuration disabled
                     this.confirmConfiguration('Shock', false, sms_text);
@@ -414,7 +419,7 @@ class TK102B extends Tracker
                     //Confirm configuration enabled
                     this.confirmConfiguration('Shock', true, sms_text);
                 }
-                else if(sms_text.includes('nomove ok!'))
+                else if(sms_text.includes('nomove ok'))
                 {
                     //Confirm configuration disabled
                     this.confirmConfiguration('MoveOut', false, sms_text);
@@ -424,7 +429,7 @@ class TK102B extends Tracker
                     //Confirm configuration enabled
                     this.confirmConfiguration('MoveOut', true, sms_text);
                 }
-                else if(sms_text.includes('nospeed ok!'))
+                else if(sms_text.includes('nospeed ok'))
                 {
                     //Confirm configuration disabled
                     this.confirmConfiguration('OverSpeed', false, sms_text);
@@ -652,6 +657,12 @@ class TK102B extends Tracker
 
                     //Call method to end configurations
                     this.applyConfigurations();
+
+                    //Update configuration status
+                    this.getDB()
+                        .collection("Tracker/" + this.getID() + "/Configurations")
+                        .doc(configuration.name)
+                        .update(configuration);
                 }
             }
 
@@ -771,6 +782,11 @@ class TK102B extends Tracker
                 title: 'Alerta de vibração',
                 content: 'Vibração detectada pelo dispositivo.'
             });
+        }
+        else
+        {
+            //Call super method using default notifications
+            super.insert_coordinates(tracker_params, coordinate_params);
         }
     }
     
