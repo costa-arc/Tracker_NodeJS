@@ -28,6 +28,7 @@
     "moment": "^2.20.1",
     "node-cron": "^1.2.1",
     "node-geocoder": "^3.21.1",
+    "node-pdu": "^1.0.12",
     "node-xcs": "^0.1.6",
     "pdu": "^1.1.0",
     "serialport": "^6.0.4",

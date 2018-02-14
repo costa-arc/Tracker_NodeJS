@@ -66,12 +66,12 @@ sms_parser.on('data', (type, data) =>
       });
     
     //Message already parsed, delete from memmory
-    sms_parser.deleteMessage(sms);
+    sms_parser.deleteMessage(data.content);
   }
   else if(type == "delivery_report")
   {
     //Log error
-    logger.error("Received delivery report from unknown number: " + delivery_report.sender);
+    logger.error("Received delivery report from unknown number: " + data.content.sender);
   }
 });
 
@@ -158,13 +158,12 @@ function monitorTrackers()
         logger.info("Tracker " + docChange.type + ": " + docChange.doc.get('name'));
     
         //If tracker is inserted or updated
-        if(docChange.type === 'added' || docChange.doc.get('lastUpdate') == null)
+        if(docChange.type === 'added' || docChange.type === 'modified')
         {
-
           //If this tracker is not currently loaded
           if(!trackers[id])
           {
-            //Save tracker on array
+            //Get tracker model
             switch(docChange.doc.get('model'))
             {
               case 'tk102b': 
@@ -189,11 +188,6 @@ function monitorTrackers()
 
           //Load configurations from dabatase
           trackers[id].loadConfigFromDB();
-        } 
-        else if(docChange.type === 'modified')
-        {
-          //Tracker updated, but configurations didn't changed, just update data
-          trackers[id].loadData(docChange.doc);
         }
         else if(docChange.type === 'removed')
         {

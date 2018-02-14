@@ -22,40 +22,22 @@ class TK102B extends Tracker
         var currentDate = new Date();
 
         //Get last update on this tracker
-        var lastUpdate = this.get('lastUpdate');
+        var lastConfiguration = this.get('lastConfiguration');
 
-        //Check if an update is requested, or if last update caused an error on a diferent server, or if last update occurred more then half our ago
-        if(lastUpdate == null || (lastUpdate.status == "ERROR" && lastUpdate.server != this.getServerName()) || currentDate - lastUpdate.datetime > 1000*60*10)
+        //Check if tracker has not been configured yet or if last configuration occurred more than an our ago
+        if(lastConfiguration == null || currentDate - lastConfiguration.datetime > 1000*60*60)
         {
-            //For each available configuration from this tracker
-            for (let config of this._configurations)
-            {
-                //If this particular config is not completed, or last update on this config is more than one day
-                if(config.status.step === "REQUESTED" || config.status.step === "ERROR" || currentDate - config.status.datetime > (1000*60*60*24))
-                {
-                    //Update config status
-                    config.status.step = "PENDING";
-
-                    //Add this configuration to be executed
-                    this._pending_configs.push(config);
-                    
-                    //Log info
-                    logger.debug("Tracker " + this.get('name') + " config '" + config.name + "' is marked as pending.");                    
-                }
-                else
-                {
-                    //Log info
-                    logger.debug("Tracker " + this.get('name') + " config '" + config.name + "' is up to date.")
-                }
-            };
-
             //Check if there is any pending configuration
-            if(this._pending_configs.length > 0)
-            {
+            if(this.getPendingConfigs().length > 0)
+            {    
                 //Update tracker to indicate pending configuration
-                this.getDB().doc('Tracker/' + this.getID()).update('lastUpdate', 
+                this.getDB().doc('Tracker/' + this.getID()).update('lastConfiguration', 
                 {
-                    status: "PENDING",
+                    step: "PENDING",
+                    description: "Configuração do dispositivo iniciada",
+                    status: "Preparando configurações para envio",
+                    progress: 0,
+                    pending: this.getPendingConfigs().length,
                     server: this.getServerName(),
                     datetime: currentDate
                 });
@@ -65,13 +47,13 @@ class TK102B extends Tracker
             }
             else
             {
-                logger.info("Configuration check finished on tracker " + this.get('name') + ": No updates required.")
+                logger.info("Configuration check finished on tracker " + this.get('name') + ": No updates required")
             }
         }
         else
         {
             //Log info
-            logger.debug("Tracker " + this.get('name') + " configuration is not currently required. (Last: " + ((currentDate - lastUpdate.datetime) / (1000 * 60)).toFixed(2) + " mins ago / Result: " + lastUpdate.status + ")");
+            logger.debug("Tracker " + this.get('name') + " configuration is not currently required. (Last: " + ((currentDate - lastConfiguration.datetime) / (1000 * 60)).toFixed(2) + " mins ago / Step: " + lastConfiguration.step + " / Description: " + lastConfiguration.status + ")");
         }
     }
 
@@ -81,60 +63,33 @@ class TK102B extends Tracker
         var self = this;
 
         //Try to get first current pending configuration
-        var configuration = this._pending_configs.pop();
+        var configuration = this.getPendingConfigs()[0];
 
-        //If there are no pending configurations
-        if(!configuration)
+        //If there is any pending configuration
+        if(configuration)
         {
-            //Initialize last update result
-            var lastUpdate = {server: this.getServerName(), status: "SUCCESS", datetime: new Date()}
-
-            //For each configuration available on this tracker
-            for(let config of this._configurations)
-            {
-                //Check if any error ocurred
-                if(config.status.step == "ERROR")
-                {           
-                    //Update tracker to indicate configuration finished
-                    lastUpdate.status = "ERROR";
-                }
-            }
-            
-            //Update tracker to indicate configuration finished
-            this.getDB()
-                .collection('Tracker')
-                .doc(this.getID())
-                .update('lastUpdate', lastUpdate)
-                .then(() => 
-                {
-                    //Check no errors ocurred during update
-                    if(lastUpdate.status == "SUCCESS")
-                    {
-                        //Log info
-                        logger.info('Configurations on tracker ' + self.get('name') + ' finished successfully, updating status...');
-                    }
-                    else
-                    {
-                        //Log error
-                        logger.error('Configurations on tracker ' + self.get('name') + ' failed on this server, updating status...');
-                    }
-                })
-                .catch(error =>
-                {
-                    //Log error
-                    logger.error('Could not update tracker ' + self.get('name') + ' status on Firestore DB: ' + error);
-                })
-        }
-        else
-        {
-            //Command to be sent by SMS to this tracker
+            //Command to be sent to this tracker
             var command;
 
             //Check configuration name
             switch(configuration.name)
             {
+                case "Reset":  
+                    //INITIAL CONFIGURATION: Reset tracker previous configuration
+                    command = "reset123456";
+                    break;
+
+                case "Begin":
+                    //INITIAL CONFIGURATION: Initialize tracker
+                    command = "begin123456";
+                    break;
+
+                case "Admin":
+                    //INITIAL CONFIGURATION: Set this server as tracker admin
+                    command = "admin123456 " + this.getParser().getPhoneNumber();
+                    break;
+                    
                 case "MoveOut":
-                
                     //Move out alert
                     command = (configuration.enabled ? 'move123456' : 'nomove123456');
                     break;
@@ -168,7 +123,7 @@ class TK102B extends Tracker
                         configuration.status.command = '';
                         configuration.status.completed = true;
                         configuration.status.step = 'SUCCESS';
-                        configuration.status.description = "Status: Configuração desativada com sucesso.";
+                        configuration.status.description = "Configuração desativada com sucesso";
                         configuration.status.datetime = new Date();
 
                         //Save data on firestore DB
@@ -176,9 +131,6 @@ class TK102B extends Tracker
                             .collection("Tracker/" + this.getID() + "/Configurations")
                             .doc(configuration.name)
                             .set(configuration);
-
-                        //Call recursive method to execute any pending configurations
-                        this.applyConfigurations();
 
                         //End method
                         return;
@@ -191,7 +143,7 @@ class TK102B extends Tracker
                     break;
             }
 
-            //Update tracker to indicate configuration finished
+            //Log data
             logger.debug("Executing tracker " + this.get('name') + " config " + configuration.name + ": " + command);
 
             //Send SMS to request command
@@ -227,16 +179,28 @@ class TK102B extends Tracker
                     
                     //Update configuration data on SMS successfully sent
                     configuration.status.step = "SMS_SENT";
-                    configuration.status.description = "Status: Mensagem enviada ao rastreador...";
+                    configuration.status.description = "Configuração enviada ao rastreador";
                     configuration.status.command = result.text;
                     configuration.status.datetime = new Date();
+
+                    //Check if there is any pending configuration
+                    this.updateConfigProgress(0.3, configuration.description, configuration.status.description);
                 }
                 else
                 {
-                    //Update configuration data on SMS successfully sent
+                    //Get configuration from main configuration array (required on applyConfiguration)
+                    configuration = this.getConfiguration(configuration.name);
+
+                    //Update configuration data on SMS error
                     configuration.status.step = "ERROR";
-                    configuration.status.description = "Status: Erro ocorrido ao enviar mensagem para o rastreador.";
+                    configuration.status.description = "Falha no envio da configuração";
                     configuration.status.datetime = new Date();
+
+                    //Error executing configs, clear pending array
+                    this.setPendingConfigs([]);
+
+                    //Call method to end configuration
+                    this.applyConfigurations();
 
                     //Log info
                     logger.error("Tracker config '" + configuration.name + "' failed: " + result);
@@ -247,27 +211,128 @@ class TK102B extends Tracker
                     .collection("Tracker/" + this.getID() + "/Configurations")
                     .doc(configuration.name)
                     .set(configuration);
-
-                //Call recursive method to execute any pending configurations
-                this.applyConfigurations();
             });
+        }
+        else
+        {
+            //Initialize last update result
+            var lastConfiguration = 
+            {
+                step: "SUCCESS", 
+                description: "Configuração do rastreador bem sucedida",
+                status: "Processo finalizado às " + moment().format("hh:mm - DD/MM"),
+                server: this.getServerName(),
+                datetime: new Date()
+            }
+
+            //For each configuration available on this tracker
+            for(var configName in this.getConfigurations())
+            {
+                //Get configuration data
+                var config = this.getConfiguration(configName);
+
+                //Check if any error ocurred
+                if(config.status.step == "ERROR")
+                {           
+                    //Update tracker to indicate configuration finished
+                    lastConfiguration.step = "ERROR";
+                    lastConfiguration.status = config.status.description;
+                    lastConfiguration.description = "Erro ao configurar rastreador";
+                }
+            }
+            
+            //Update tracker to indicate configuration finished
+            this.getDB()
+                .collection('Tracker')
+                .doc(this.getID())
+                .set(
+                { 
+                    lastConfiguration: lastConfiguration, 
+                    lastUpdate: new Date()
+                }, 
+                { merge: true })
+                .then(() => 
+                {
+                    //Check no errors ocurred during update
+                    if(lastConfiguration.step == "SUCCESS")
+                    {
+                        //Log info
+                        logger.info('Configurations on tracker ' + self.get('name') + ' finished successfully, updating status...');
+                    }
+                    else
+                    {
+                        //Log error
+                        logger.error('Configurations on tracker ' + self.get('name') + ' failed on this server, updating status...');
+                    }
+                })
+                .catch(error =>
+                {
+                    //Log error
+                    logger.error('Could not update tracker ' + self.get('name') + ' status on Firestore DB: ' + error);
+                })
         }
     }
 
-    confirmConfiguration(configName, enabled)
+    confirmConfiguration(configName, enabled, response, remove)
     {
-        for(let config of this.getConfigurations())
-        {
-            if(config.name == configName)
-            {
-                //Change configuration status
-                config.enabled = enabled;
-                config.status.step = "SUCCESS";
-                config.status.description = "Status: Configuração confirmada com sucesso em " + moment().format('DD/MM - hh:mm');
-                config.status.completed = true;
-                config.status.datetime = new Date();
+        //Get configuration by name
+        var config = this.getConfiguration(configName);
 
-                //Save message on firestore DB
+        //Check if config currently available to this tracker
+        if(config)
+        {
+            //Change configuration status
+            config.enabled = enabled;
+            config.status.completed = true;
+            config.status.datetime = new Date();
+
+            //Check if configuration successfully applied
+            if(response.includes('ok'))
+            {
+                //Show success message to user
+                config.status.step = "SUCCESS";
+                config.status.description = "Configuração bem sucedida";
+
+                //Configuration completed, update progress
+                this.updateConfigProgress(1, config.description, config.status.description);
+            }
+            else if (response.includes("fail"))
+            {
+                //Show success message to user
+                config.status.step = "ERROR";
+                config.status.description = "Dispositivo recusou a configuração";
+
+                //Reset configuration array
+                this.setPendingConfigs([]);
+
+                //Call method to end configurations
+                this.applyConfigurations();
+            }
+            else if(response.includes("password err"))
+            {
+                //Show success message to user
+                config.status.step = "ERROR";
+                config.status.description = "Dispositivo recusou a senha informada";
+
+                //Reset configuration array
+                this.setPendingConfigs([]);
+
+                //Call method to end configurations
+                this.applyConfigurations();
+            }
+
+            //Check if user wants to delete configuration after success
+            if(remove && config.status.step == "SUCCESS")
+            {
+                    //Initial configuration successfull, no longer required
+                    this.getDB()
+                    .collection("Tracker/" + this.getID() + "/Configurations")
+                    .doc(config.name)
+                    .delete();
+            }
+            else
+            {
+                //Update configuration status on firestore DB
                 this.getDB()
                     .collection("Tracker/" + this.getID() + "/Configurations")
                     .doc(config.name)
@@ -275,10 +340,10 @@ class TK102B extends Tracker
                     .then(function () 
                     {
                         // Message already saved on DB, delete from modem memmory
-                        logger.info("Tracker " + this.get('name') + " config '" + configName + "' successfully executed.")
+                        logger.info("Tracker " + this.get('name') + " config '" + configName + "' successfully executed")
 
                     }.bind(this));
-            }
+            }        
         }
     }
 
@@ -323,7 +388,7 @@ class TK102B extends Tracker
                 //Send notification to users subscribed on this topic
                 this.sendNotification("Notify_Available", {
                     title: "Recebimento de SMS",
-                    content: "SMS enviado pelo rastreador foi recebido.",
+                    content: "SMS enviado pelo rastreador foi recebido",
                     expanded: "SMS enviado pelo rastreador foi recebido: \n\n" + sms.text.replace(/\0/g, ''),
                     datetime: sms.time.getTime().toString()
                 });
@@ -332,42 +397,62 @@ class TK102B extends Tracker
                 if(sms_text.includes('notn ok!'))
                 {
                     //Confirm configuration disabled
-                    this.confirmConfiguration('PeriodicUpdate', false);
+                    this.confirmConfiguration('PeriodicUpdate', false, sms_text);
                 }
-                else if(sms_text.includes("***n ok!"))
+                else if(sms_text.includes("***n"))
                 {
                     //Confirm configuration enabled
-                    this.confirmConfiguration('PeriodicUpdate', true);
+                    this.confirmConfiguration('PeriodicUpdate', true, sms_text);
                 }
                 else if(sms_text.includes('noshock ok!'))
                 {
                     //Confirm configuration disabled
-                    this.confirmConfiguration('Shock', false);
+                    this.confirmConfiguration('Shock', false, sms_text);
                 }
-                else if(sms_text.includes('shock ok!'))
+                else if(sms_text.includes('shock '))
                 {
                     //Confirm configuration enabled
-                    this.confirmConfiguration('Shock', true);
+                    this.confirmConfiguration('Shock', true, sms_text);
                 }
                 else if(sms_text.includes('nomove ok!'))
                 {
                     //Confirm configuration disabled
-                    this.confirmConfiguration('MoveOut', false);
+                    this.confirmConfiguration('MoveOut', false, sms_text);
                 }
-                else if(sms_text.includes('move ok!'))
+                else if(sms_text.includes('move '))
                 {
                     //Confirm configuration enabled
-                    this.confirmConfiguration('MoveOut', true);
+                    this.confirmConfiguration('MoveOut', true, sms_text);
                 }
                 else if(sms_text.includes('nospeed ok!'))
                 {
                     //Confirm configuration disabled
-                    this.confirmConfiguration('OverSpeed', false);
+                    this.confirmConfiguration('OverSpeed', false, sms_text);
                 }
-                else if(sms_text.includes('speed ok!'))
+                else if(sms_text.includes('speed '))
                 {
                     //Confirm configuration enabled
-                    this.confirmConfiguration('OverSpeed', true);
+                    this.confirmConfiguration('OverSpeed', true, sms_text);
+                }
+                else if(sms_text.includes('RESET '))
+                {
+                    //Confirm configuration enabled
+                    this.confirmConfiguration('Reset', true, sms_text, true);
+                }
+                else if(sms_text.includes('begin '))
+                {
+                    //Confirm configuration enabled
+                    this.confirmConfiguration('Begin', true, sms_text, true);
+                }
+                else if(sms_text.includes('admin '))
+                {
+                    //Confirm configuration enabled
+                    this.confirmConfiguration('Admin', true, sms_text, true);
+                }
+                else if(sms_text.includes('password err'))
+                {
+                    //Confirm configuration enabled
+                    this.confirmConfiguration('StatusCheck', true, sms_text);
                 }
                 else if(sms_text.startsWith('GSM: '))
                 {
@@ -393,7 +478,7 @@ class TK102B extends Tracker
                     });
 
                     //Status check configuration successfully applied
-                    this.confirmConfiguration("StatusCheck", true);
+                    this.confirmConfiguration("StatusCheck", true, 'ok');
                     
                     //Log info
                     logger.info('Successfully parsed status message from: ' + this.get('name'));
@@ -443,7 +528,8 @@ class TK102B extends Tracker
                                     type: "GSM",
                                     location: coordinates,
                                     datetime: new Date()
-                                }
+                                },
+                                lastUpdate: new Date()
                             };
 
                             //Define coordinates params to be inserted/updated
@@ -457,21 +543,11 @@ class TK102B extends Tracker
                                 speed: "N/D"
                             }
                             
-                            if(sms_text.startsWith("shock!"))
-                            {
-                                //Insert coordinates on DB and build shock alert notification
-                                this.insert_coordinates(tracker_params, coordinate_params, 
-                                {
-                                    topic: 'Notify_Shock',
-                                    title: 'Alerta de vibração',
-                                    content: 'Vibração detectada pelo dispositivo.'
-                                });
-                            }
-                            else
-                            {
-                                //Insert coordinates on db with default notification
-                                this.insert_coordinates(tracker_params, coordinate_params);
-                            }
+                            //Insert coordinates on db with default notification
+                            this.insert_coordinates(tracker_params, coordinate_params, sms_text);
+
+                            //Confirm location configuration (if requested by user)
+                            this.confirmConfiguration("Location", true, "ok", true);
                         } 
                         else 
                         {
@@ -506,7 +582,8 @@ class TK102B extends Tracker
                             type: "GPS",
                             location: coordinates,
                             datetime: new Date()
-                        }
+                        },
+                        lastUpdate: new Date()
                     };
 
                     //Define coordinates params to be inserted/updated
@@ -519,42 +596,11 @@ class TK102B extends Tracker
                         speed: speed
                     }
 
-                    //If this is an move alert message
-                    if(sms_text.startsWith('move!'))
-                    {
-                        //Insert coordinates on DB and build move alert notification
-                        this.insert_coordinates(tracker_params, coordinate_params, 
-                        {
-                            topic: 'Notify_MoveOut',
-                            title: 'Alerta de evasão',
-                            content: 'Movimentação além do limite determinado.'
-                        });
-                    }
-                    else if(sms_text.startsWith("speed!"))
-                    {
-                        //Insert coordinates on DB and build speed alert notification
-                        this.insert_coordinates(tracker_params, coordinate_params, 
-                        {
-                            topic: 'Notify_OverSpeed',
-                            title: 'Alerta de velocidade',
-                            content: 'Velocidade acima do limite determinado.'
-                        });
-                    }
-                    else if(sms_text.startsWith("shock!"))
-                    {
-                        //Insert coordinates on DB and build shock alert notification
-                        this.insert_coordinates(tracker_params, coordinate_params, 
-                        {
-                            topic: 'Notify_Shock',
-                            title: 'Alerta de vibração',
-                            content: 'Vibração detectada pelo dispositivo.'
-                        });
-                    }
-                    else
-                    {
-                        //Insert coordinates on db with default notification
-                        this.insert_coordinates(tracker_params, coordinate_params);
-                    }
+                    //Insert coordinates on db
+                    this.insert_coordinates(tracker_params, coordinate_params, sms_text);
+
+                    //Confirm location configuration (if requested by user)
+                    this.confirmConfiguration("Location", true, "ok", true);
                 }
                 else
                 {
@@ -571,18 +617,42 @@ class TK102B extends Tracker
             //Get delivery report data
             var delivery_report = data.content;
 
+            //Try to get first pending configuration
+            var configuration = this.getPendingConfigs()[0];
+
             //If report is indicating success
             if(delivery_report.status == "00")
             {
                 //Set title and content
                 notificationParams.title = "Alerta de disponibilidade";
                 notificationParams.content = "Confirmou o recebimento de SMS";
+
+                //If exists a pending configuration
+                if(configuration)
+                {
+                    //Check if there is any pending configuration
+                    this.updateConfigProgress(0.6, configuration.description, "Rastreador recebeu configuração");
+                }
             }
             else
             {
-                //Set title and content
+                //Failed to deliver SMS
                 notificationParams.title = "Alerta de indisponibilidade";
                 notificationParams.content = "Rastreador não disponível para receber SMS";
+
+                //If exists a pending configuration
+                if(configuration)
+                {
+                    //Show success message to user
+                    configuration.status.step = "ERROR";
+                    configuration.status.description = "Dispositivo não disponível";
+
+                    //Reset configuration array
+                    this.setPendingConfigs([]);
+
+                    //Call method to end configurations
+                    this.applyConfigurations();
+                }
             }
 
             //Try to get sms from sms_sent array
@@ -610,6 +680,97 @@ class TK102B extends Tracker
 
             //Log data
             logger.info("Received delivery report from " + this.get('name'));
+        }
+    }
+
+    updateConfigProgress(config_progress, config_description, status_description)
+    {
+        //Try to get total pending configuration count
+        var pending = this.get('lastConfiguration').pending;
+
+        //Check if there is any pending configuration
+        if(pending)
+        {
+            //Calculate configuration progress 
+            var progress = ((pending - this.getPendingConfigs().length + config_progress) * 100 / pending).toFixed(0);
+    
+            //Update tracker to indicate pending configuration
+            this.getDB().doc('Tracker/' + this.getID()).update(
+            { 
+                lastConfiguration: 
+                {
+                    step: "PENDING",
+                    description: config_description,
+                    status: status_description,
+                    pending: pending,
+                    progress: progress,
+                    server: this.getServerName(),
+                    datetime: new Date()
+                },
+                lastUpdate: new Date()
+            })
+            .then((result) => 
+            {
+                //If config progress is completed (called by confirmConfiguration)
+                if(config_progress == 1)
+                {
+                    //Remove configuration from pending array
+                    this.getPendingConfigs().splice(0, 1);
+
+                    //Call method to execute next pending configuration
+                    this.applyConfigurations();
+                }
+            })
+            .catch(error =>
+            {
+                //Log error
+                logger.error("Error updating configuration progress: " + error);
+            });    
+        }   
+    }
+
+    insert_coordinates(tracker_params, coordinate_params, sms_text)
+    {
+        //If this is an move alert message
+        if(sms_text.startsWith('move!'))
+        {
+            //Insert coordinates on DB and build move alert notification
+            super.insert_coordinates(tracker_params, coordinate_params, 
+            {
+                topic: 'Notify_MoveOut',
+                title: 'Alerta de evasão',
+                content: 'Movimentação além do limite determinado.'
+            });
+        }
+        else if(sms_text.startsWith("speed!"))
+        {
+            //Insert coordinates on DB and build speed alert notification
+            super.insert_coordinates(tracker_params, coordinate_params, 
+            {
+                topic: 'Notify_OverSpeed',
+                title: 'Alerta de velocidade',
+                content: 'Velocidade acima do limite determinado.'
+            });
+        }
+        else if(sms_text.startsWith("shock!"))
+        {
+            //Insert coordinates on DB and build shock alert notification
+            super.insert_coordinates(tracker_params, coordinate_params, 
+            {
+                topic: 'Notify_Shock',
+                title: 'Alerta de vibração',
+                content: 'Vibração detectada pelo dispositivo.'
+            });
+        }
+        else if(sms_text.startsWith("SOS!"))
+        {
+            //Insert coordinates on DB and build shock alert notification
+            super.insert_coordinates(tracker_params, coordinate_params, 
+            {
+                topic: 'Notify_Shock',
+                title: 'Alerta de vibração',
+                content: 'Vibração detectada pelo dispositivo.'
+            });
         }
     }
     

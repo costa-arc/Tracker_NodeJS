@@ -65,7 +65,8 @@ class ST940 extends Tracker
                     type: "GSM",
                     location: coordinates,
                     datetime: datetime
-                }
+                },
+                lastUpdate: new Date()
             };
 
             //Define coordinates params to be inserted/updated

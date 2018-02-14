@@ -12,7 +12,7 @@ class Tracker
         this._id = id;
         this._parser = parser;
         this._google_services = google_services;
-        this._configurations = [];
+        this._configurations = {};
         this._pending_configs = [];
     }
 
@@ -94,10 +94,28 @@ class Tracker
         return this._configurations;
     }
 
+    //Try to get configuration value
+    getConfiguration(value)
+    {
+        return this._configurations[value];
+    }
+
+    //Get Pending configuration array
+    getPendingConfigs()
+    {
+        return this._pending_configs
+    }
+
     //Set Configuration array
     setConfigurations(value)
     {
         this._configurations = value;
+    }
+
+    //Set Pending configuration array
+    setPendingConfigs(value)
+    {
+        this._pending_configs = value;
     }
 
     //Send notification using Google Firebase Cloud Messaging
@@ -113,23 +131,40 @@ class Tracker
         //Load configuration from trackers
         this.getDB()
         .collection("Tracker/" + this.getID() + "/Configurations")
+        .orderBy("priority", 'desc')
         .get()
-        .then(function(result)
+        .then(result =>
         {
             //Initialize configuration array
-            this.setConfigurations(new Array());
+            this.setConfigurations({});
+
+            //Initialize pending configuration array
+            this.setPendingConfigs([]);
 
             //For each config load from DB
             result.forEach(config => 
             {
+                //Get configuration data
+                config = config.data();
+
                 //Append configuration to array
-                this.getConfigurations().push(config.data())
+                this.getConfigurations()[config.name] = config;
+
+                //Check configuration status
+                if(config.status.step != "SUCCESS")
+                {
+                    //Append to pending configuration array
+                    this.getPendingConfigs().push(config);
+                }
             });
+
+            //Log data
+            logger.debug(this.get('name') + " configs loaded (" + Object.keys(this.getConfigurations()).length + " total / " + this.getPendingConfigs().length + " pending)")
 
             //Perform initial configuration check
             this.checkConfigurations();
 
-        }.bind(this))
+        })
         .catch(error => 
         {
             //Log error message
