@@ -224,7 +224,7 @@ class TK102B extends Tracker
             var lastConfiguration = 
             {
                 step: "SUCCESS", 
-                description: "Configuração do rastreador bem sucedida",
+                description: "Configuração bem sucedida",
                 status: "Processo finalizado às " + moment().format("hh:mm - DD/MM"),
                 server: this.getServerName(),
                 datetime: new Date()

@@ -100,6 +100,12 @@ class Tracker
         return this._configurations[value];
     }
 
+    //Get number of configurations available to this tracker
+    getConfigurationsCount()
+    {
+       return Object.keys(this._configurations).length;
+    }
+
     //Get Pending configuration array
     getPendingConfigs()
     {
@@ -159,7 +165,7 @@ class Tracker
             });
 
             //Log data
-            logger.debug(this.get('name') + " configs loaded (" + Object.keys(this.getConfigurations()).length + " total / " + this.getPendingConfigs().length + " pending)")
+            logger.debug(this.get('name') + " configs loaded (" + this.getConfigurationsCount() + " total / " + this.getPendingConfigs().length + " pending)")
 
             //Perform initial configuration check
             this.checkConfigurations();
@@ -184,30 +190,7 @@ class Tracker
 
     confirmConfiguration(configName, enabled)
     {
-        for(let config of this.getConfigurations())
-        {
-            if(config.name == configName)
-            {
-                //Change configuration status
-                config.status.step = "SUCCESS";
-                config.status.description = "Status: Configuração confirmada com sucesso em " + moment().format('dd/MM - hh:mm');
-                config.status.completed = true;
-                config.status.enabled = enabled;
-                config.status.datetime = currentDate;
 
-                //Save message on firestore DB
-                this.getDB()
-                    .collection("Tracker/" + this.getID() + "/Configurations")
-                    .doc(config.name)
-                    .set(config)
-                    .then(function () 
-                    {
-                        // Message already saved on DB, delete from modem memmory
-                        logger.info("Tracker " + this.get('name') + " config '" + configName + "' successfully executed.")
-
-                    }.bind(this));
-            }
-        }
     }
 
     parseData(type, data)

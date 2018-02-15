@@ -99,7 +99,7 @@ tcp_parser.on('data', (tcp_socket, data) =>
         if (!docSnapshot.exists) 
         {
             //Log info
-            logger.info("New tracker (ST940@" + data.source + ") detected, inserting on DB.")
+            logger.info("New tracker (ST940@" + data.source + ") detected, requesting current configuration.")
             
             //Initialize tracker array
             var tracker_params = {};
@@ -109,6 +109,7 @@ tcp_parser.on('data', (tcp_socket, data) =>
             tracker_params.model = "st940";
             tracker_params.description = "Adicionado automaticamente";
             tracker_params.identification = data.source;
+            tracker_params.lastUpdate = new Date();
 
             //Choose a random color to new tracker
             tracker_params.backgroundColor = ['#99ff0000', '#99ffe600', '#99049f1e', '#99009dff', '#9900ffee'][Math.floor((Math.random() * 4) + 1)];
@@ -186,8 +187,12 @@ function monitorTrackers()
           //Load data on tracker
           trackers[id].loadData(docChange.doc);
 
-          //Load configurations from dabatase
-          trackers[id].loadConfigFromDB();
+          //Check if tracker configuration is loaded
+          if(trackers[id].get('lastConfiguration') == null || trackers[id].getConfigurationsCount() == 0)
+          {
+            //Load configurations from dabatase
+            trackers[id].loadConfigFromDB();
+          }
         }
         else if(docChange.type === 'removed')
         {
