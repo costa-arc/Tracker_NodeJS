@@ -254,7 +254,7 @@ class ST940 extends Tracker
          {
              step: "SUCCESS", 
              description: "Configuração bem sucedida",
-             status: "Processo finalizado às " + moment().format("hh:mm - DD/MM"),
+             status: "Processo finalizado às " + moment().format("HH:mm - DD/MM"),
              server: this.getServerName(),
              datetime: new Date()
          }
@@ -582,7 +582,7 @@ class ST940 extends Tracker
            super.insert_coordinates(tracker_params, coordinate_params, 
            {
                topic: 'Tracker_SOS',
-               title: 'Alerta de SOS',
+               title: 'Alerta de emergência (SOS)',
                content: 'Botão de SOS pressionado no dispositivo'
            });
        }

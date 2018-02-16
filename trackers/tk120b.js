@@ -225,7 +225,7 @@ class TK102B extends Tracker
             {
                 step: "SUCCESS", 
                 description: "Configuração bem sucedida",
-                status: "Processo finalizado às " + moment().format("hh:mm - DD/MM"),
+                status: "Processo finalizado às " + moment().format("HH:mm - DD/MM"),
                 server: this.getServerName(),
                 datetime: new Date()
             }
@@ -770,11 +770,78 @@ class TK102B extends Tracker
                 content: 'Vibração detectada pelo dispositivo.'
             });
         }
+        else if(sms_text.startsWith("Low Battery!"))
+        {
+            //Insert coordinates on DB and build shock alert notification
+            super.insert_coordinates(tracker_params, coordinate_params, 
+            {
+                topic: 'Notify_LowBattery',
+                title: 'Alerta de bateria fraca',
+                content: 'Bateria do dispositivo em nível baixo.'
+            });
+
+            //Call method to disable alert
+            this.disableAlert("low battery");
+        }
+        else if(sms_text.startsWith("Help me!"))
+        {
+            //Insert coordinates on DB and build shock alert notification
+            super.insert_coordinates(tracker_params, coordinate_params, 
+            {
+                topic: 'Tracker_SOS',
+                title: 'Alerta de emergência (SOS)',
+                content: 'Botão de SOS pressionado no dispositivo.'
+            });
+
+            //Call method to disable alert
+            this.disableAlert("help me");
+        }
         else
         {
             //Call super method using default notifications
             super.insert_coordinates(tracker_params, coordinate_params);
         }
+    }
+
+    disableAlert(command)
+    {
+      //Send SMS to request command
+      this.getParser().send_sms(this, command, (sent, result) =>
+      {
+         //SMS successfully sent
+         if(sent)
+         {
+            //Save SMS sent on Firestore DB
+            this.getDB()
+            .collection("Tracker/" + this.get('identification') + "/SMS_Sent")
+            .doc(result.id)
+            .set(
+            {
+               server: self.getServerName(),
+               from: self.getParser().getPhoneNumber(),
+               text: result.text,
+               reference: result.reference,
+               sentTime: new Date(),
+               receivedTime: null,
+               status: 'ENROUTE'
+            })
+            .then(() =>
+            {
+               //Result sucess
+               logger.info("Sent '" + command + "' command to tracker " + self.get('name') + ": Reference: #" + result.reference + " -> Firestore ID: " +  result.id);
+            })
+            .catch(error => 
+            {
+               //Result warning
+               logger.warn("Command '" + command + "' sent to tracker " + self.get('name') + ": Reference: #" + result.reference + " -> Could not save on firestore: " + error);
+            }); 
+         }
+         else
+         {
+            //Result error
+            logger.error("Could not disable alert from tracker " + self.get('name') + ", error sending SMS: " + error);
+         }
+      });
     }
     
 }
