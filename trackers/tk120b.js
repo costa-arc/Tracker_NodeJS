@@ -446,6 +446,16 @@ class TK102B extends Tracker
                     //Confirm configuration enabled
                     this.confirmConfiguration('StatusCheck', true, sms_text);
                 }
+                else if(sms_text.includes('help me! ok!'))
+                {
+                  //Confirm configuration enabled
+                  logger.info("Successfully disabled SOS alert from tracker " + this.get('name'));
+                }
+                else if(sms_text.includes('low battery! ok!'))
+                {
+                  //Confirm configuration enabled
+                  logger.info("Successfully disabled low battery alert from tracker " + this.get('name')); 
+                }
                 else if(sms_text.startsWith('GSM: '))
                 {
                     //Get signal level from SMS text
@@ -828,18 +838,18 @@ class TK102B extends Tracker
             .then(() =>
             {
                //Result sucess
-               logger.info("Sent '" + command + "' command to tracker " + self.get('name') + ": Reference: #" + result.reference + " -> Firestore ID: " +  result.id);
+               logger.info("Sent '" + command + "' command to tracker " + this.get('name') + ": Reference: #" + result.reference + " -> Firestore ID: " +  result.id);
             })
             .catch(error => 
             {
                //Result warning
-               logger.warn("Command '" + command + "' sent to tracker " + self.get('name') + ": Reference: #" + result.reference + " -> Could not save on firestore: " + error);
+               logger.warn("Command '" + command + "' sent to tracker " + this.get('name') + ": Reference: #" + result.reference + " -> Could not save on firestore: " + error);
             }); 
          }
          else
          {
             //Result error
-            logger.error("Could not disable alert from tracker " + self.get('name') + ", error sending SMS: " + error);
+            logger.error("Could not disable alert from tracker " + this.get('name') + ", error sending SMS: " + error);
          }
       });
     }
