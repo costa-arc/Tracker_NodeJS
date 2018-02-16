@@ -90,7 +90,7 @@ class Google_Services
     }
 
     // Create topic structure
-    topic = tracker_id + "_" + topic;
+    topic = (topic.includes("SOS") ? topic: tracker_id + "_" + topic);
 
     // Send a message to devices subscribed to the provided topic.
     this._fcm.sendToTopic(topic, { data: params }, 

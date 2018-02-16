@@ -278,7 +278,7 @@ class TK102B extends Tracker
         }
     }
 
-    confirmConfiguration(configName, enabled, response, remove)
+    confirmConfiguration(configName, enabled, response)
     {
         //Get configuration by name
         var config = this.getConfiguration(configName);
@@ -326,29 +326,16 @@ class TK102B extends Tracker
                 this.applyConfigurations();
             }
 
-            //Check if user wants to delete configuration after success
-            if(remove && config.status.step == "SUCCESS")
-            {
-                    //Initial configuration successfull, no longer required
-                    this.getDB()
-                    .collection("Tracker/" + this.getID() + "/Configurations")
-                    .doc(config.name)
-                    .delete();
-            }
-            else
-            {
-                //Update configuration status on firestore DB
-                this.getDB()
-                    .collection("Tracker/" + this.getID() + "/Configurations")
-                    .doc(config.name)
-                    .set(config)
-                    .then(function () 
-                    {
-                        // Message already saved on DB, delete from modem memmory
-                        logger.info("Tracker " + this.get('name') + " config '" + configName + "' successfully executed")
-
-                    }.bind(this));
-            }        
+            //Update configuration status on firestore DB
+            this.getDB()
+               .collection("Tracker/" + this.getID() + "/Configurations")
+               .doc(config.name)
+               .set(config)
+               .then(() =>
+               {
+                  // Message already saved on DB, delete from modem memmory
+                  logger.info("Tracker " + this.get('name') + " config '" + configName + "' successfully executed")
+               });       
         }
     }
 
@@ -442,17 +429,17 @@ class TK102B extends Tracker
                 else if(sms_text.includes('RESET '))
                 {
                     //Confirm configuration enabled
-                    this.confirmConfiguration('Reset', true, sms_text, true);
+                    this.confirmConfiguration('Reset', true, sms_text);
                 }
                 else if(sms_text.includes('begin '))
                 {
                     //Confirm configuration enabled
-                    this.confirmConfiguration('Begin', true, sms_text, true);
+                    this.confirmConfiguration('Begin', true, sms_text);
                 }
                 else if(sms_text.includes('admin '))
                 {
                     //Confirm configuration enabled
-                    this.confirmConfiguration('Admin', true, sms_text, true);
+                    this.confirmConfiguration('Admin', true, sms_text);
                 }
                 else if(sms_text.includes('password err'))
                 {

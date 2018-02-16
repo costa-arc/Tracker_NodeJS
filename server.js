@@ -185,7 +185,7 @@ function monitorTrackers()
           }
     
           //Load data on tracker
-          trackers[id].loadData(docChange.doc);
+          trackers[id].loadData(docChange.doc.data());
 
           //Check if tracker configuration is loaded
           if(trackers[id].get('lastConfiguration') == null || trackers[id].getConfigurationsCount() == 0)

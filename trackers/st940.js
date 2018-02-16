@@ -61,85 +61,94 @@ class ST940 extends Tracker
       //Check if tracker has any configuration available
       if(this.getConfigurationsCount() > 0)
       {
+         //For each pending configuration
+         for(let config of this.getPendingConfigs())
+         {
+            //Get configuration name
+            switch(config.name)
+            {
+               case "RequestConfig":
+                     //Create PRESETALL command
+                     this.setPendingCommand("PRESETALL", 
+                     {
+                        command: "PRESETALL;" + this.getID(),
+                        description: "Solicitando configurações do rastreador"
+                     });
+                     break;
+
+               case "Magnet":
+               case "DeepSleep":
+                     //Create SERVICE command
+                     this.setPendingCommand("SVC",
+                     {
+                        command: "SVC;" + 
+                           (this.getID()) + ";0;1;" + 
+                           (this.getConfiguration("Magnet").enabled ? "1;" : "0;") + "5;10;100;5;300;100;" + 
+                           (this.getConfiguration("DeepSleep").enabled ? "1" : "0"),
+                        description: "Configurando: parâmetros de serviço"
+                     });
+                     break;
+
+               case "TurnOff":
+               case "ShockEmergency":
+                     //Create FUNCTION command (do not break from switch because emergency configuration is also present in REPORT command)
+                     this.setPendingCommand("FUNCTION", 
+                     {
+                        command: "FUNCTION;" +
+                           (this.getID()) + ";" +
+                           (this.getConfiguration("TurnOff").enabled ? "1;" : "0;") +
+                           (this.getConfiguration("ShockEmergency").enabled ? "1" : "0"),
+                        description: "Configurando: parâmetros de função"
+                     });
+                     break;
+
+               case "UpdateIdle":
+               case "UpdateActive":
+                     //Create REPORT command
+                     this.setPendingCommand("REPORT", 
+                     {
+                        command: "REPORT;" +
+                           (this.getID()) + ";" +
+                           (this.getConfiguration("UpdateIdle").enabled ? this.getConfiguration("UpdateIdle").value : "0") + ";" +
+                           (this.getConfiguration("UpdateActive").enabled ? this.getConfiguration("UpdateActive").value : "0") + ";60;3;0.10",
+                        description: "Configurando: parâmetros de atualização"
+                     });
+                     break;
+            }
+         }
+
          //Check if tracker has pending configurations
-         if(this.getPendingConfigs().length > 0)
+         if(this.getPendingCommandsCount() > 0)
          {
             //Check if there is any pending configuration
             if(!this.get("lastConfiguration"))
             {    
-               for(let config of this.getPendingConfigs())
+               //Build last configuration status
+               var lastConfiguration = 
                {
-                  //Get configuration name
-                  switch(config.name)
-                  {
-                     case "RequestConfig":
-                           //Create PRESETALL command
-                           this.setPendingCommand("PRESETALL", 
-                           {
-                              command: "PRESETALL;" + this.getID(),
-                              description: "Solicitando configurações do rastreador"
-                           });
-                           break;
-
-                     case "Magnet":
-                     case "DeepSleep":
-                           //Create SERVICE command
-                           this.setPendingCommand("SVC",
-                           {
-                              command: "SVC;" + 
-                                 (this.getID()) + ";0;1;" + 
-                                 (this.getConfiguration("Magnet").enabled ? "1;" : "0;") + "5;10;100;5;300;100;" + 
-                                 (this.getConfiguration("DeepSleep").enabled ? "1" : "0"),
-                              description: "Configurando: parâmetros de serviço"
-                           });
-                           break;
-
-                     case "TurnOff":
-                     case "ShockEmergency":
-                           //Create FUNCTION command (do not break from switch because emergency configuration is also present in REPORT command)
-                           this.setPendingCommand("FUNCTION", 
-                           {
-                              command: "FUNCTION;" +
-                                 (this.getID()) + ";" +
-                                 (this.getConfiguration("TurnOff").enabled ? "1;" : "0;") +
-                                 (this.getConfiguration("ShockEmergency").enabled ? "1" : "0"),
-                              description: "Configurando: parâmetros de função"
-                           });
-                           break;
-
-                     case "UpdateIdle":
-                     case "UpdateActive":
-                           //Create REPORT command
-                           this.setPendingCommand("REPORT", 
-                           {
-                              command: "REPORT;" 
-                                 + this.getID() + ";" 
-                                 + this.getConfiguration("UpdateIdle").enabled ? this.getConfiguration("UpdateIdle") : "0" + ";"
-                                 + this.getConfiguration("UpdateActive").enabled ? this.getConfiguration("UpdateActive").value : "0" + ";60;3;0.10",
-                              description: "Configurando: parâmetros de atualização"
-                           });
-
-                           break;
-                  }
-               }
+                  progress: 0,
+                  step: "PENDING",
+                  description: "Configuração pendente",
+                  status: "Aguardando conexão com rastreador",
+                  pending: this.getPendingCommandsCount(),
+                  server: this.getServerName(),
+                  datetime: new Date()
+               };
 
                //Update tracker to indicate pending configuration
                this.getDB().doc('Tracker/' + this.getID()).update(
                {
-                  lastConfiguration:  
-                  {
-                     progress: 0,
-                     step: "PENDING",
-                     description: "Configuração pendente",
-                     status: "Aguardando conexão com rastreador",
-                     pending: this.getPendingCommandsCount(),
-                     server: this.getServerName(),
-                     datetime: new Date()
-                  },
+                  lastConfiguration:  lastConfiguration,
                   lastUpdate: new Date()
                })
                .then(() => 
                {
+                  //Log info
+                  logger.info("Tracker ST910@" + this.getID() + " started configuration process");
+   
+                  //Update locally last configuration value
+                  this.set('lastConfiguration', lastConfiguration);
+
                   //Run method to execute configurations
                   this.applyConfigurations();
                });
@@ -147,7 +156,7 @@ class ST940 extends Tracker
             else
             {
                //Log info
-               logger.debug("Tracker ST940@" + this.getID() + " configurations waiting for connection.")
+               logger.debug("Tracker ST940@" + this.getID() + " configurations waiting for connection since: " + this.get("lastConfiguration").datetime)
             }
          }
          else
@@ -163,7 +172,7 @@ class ST940 extends Tracker
       }
    }
 
-   updateConfigProgress(config_progress, config_description, status_description)
+   updateConfigProgress(config_progress, config_description, status_description, command_name)
    {
       //Try to get total pending configuration count
       var pending = this.get('lastConfiguration').pending;
@@ -173,32 +182,50 @@ class ST940 extends Tracker
       {
          //Calculate configuration progress 
          var progress = ((pending - this.getPendingCommandsCount() + config_progress) * 100 / pending).toFixed(0);
+
+         //Build last configuration status
+         var lastConfiguration = 
+         {
+            step: "PENDING",
+            description: config_description,
+            status: status_description,
+            pending: pending,
+            progress: progress,
+            server: this.getServerName(),
+            datetime: new Date()
+         };
    
          //Update tracker to indicate pending configuration
-         this.getDB().doc('Tracker/' + this.getID()).update(
-         { 
-               lastConfiguration: 
+         this.getDB()
+            .doc('Tracker/' + this.getID())
+            .update(
+            { 
+                  lastConfiguration: lastConfiguration,
+                  lastUpdate: new Date()
+            })
+            .then((result) => 
+            {
+               //Log info
+               logger.info("Tracker ST910@" + this.getID() + " config progress (" + progress + "%): " + config_description + " -> " + status_description);
+
+               //Update locally last configuration value
+               this.set('lastConfiguration', lastConfiguration);    
+               
+               //If config progress is completed (called by confirmConfiguration)
+               if(command_name)
                {
-                  step: "PENDING",
-                  description: config_description,
-                  status: status_description,
-                  pending: pending,
-                  progress: progress,
-                  server: this.getServerName(),
-                  datetime: new Date()
-               },
-               lastUpdate: new Date()
-         })
-         .then((result) => 
-         {
-            //Log info
-            logger.info("Tracker ST910@" + this.getID() + " update: " + config_description);
-         })
-         .catch(error =>
-         {
-            //Log error
-            logger.error("Error updating configuration progress: " + error);
-         });    
+                  //Remove command from pending list
+                  delete this.getPendingCommands()[command_name];
+
+                  //Call method to execute next pending configuration
+                  this.applyConfigurations();
+               }
+            })
+            .catch(error =>
+            {
+               //Log error
+               logger.error("Error updating configuration progress: " + error);
+            });    
       }
    }
 
@@ -248,7 +275,7 @@ class ST940 extends Tracker
                if(lastConfiguration.step == "SUCCESS")
                {
                   //Log info
-                  logger.info('Configurations on tracker ' + this.get('name') + ' finished successfully, updating status...');
+                  logger.info('Configurations on tracker ' + this.get('name') + ' finished successfully (100% -> SUCCESS).');
 
                   //Update locally last configuration value
                   this.set('lastConfiguration', lastConfiguration);
@@ -282,7 +309,7 @@ class ST940 extends Tracker
          var speed = data[8];
 
          //Battery level
-         var batteryLevel = ((parseFloat(data[11]) - 2.8) * 71).toFixed(0) + '%';
+         var batteryLevel = Math.max(Math.min(((parseFloat(data[11]) - 3.45) * 140).toFixed(0), 5), 100) + '%';
 
          //Define tracker params to be updated
          var tracker_params = 
@@ -308,20 +335,27 @@ class ST940 extends Tracker
                speed: speed
          }
 
-         //Insert coordinates on DB
-         this.insert_coordinates(tracker_params, coordinate_params);
+         //Insert coordinates on DB (if its alert or emergency message, also send message code)
+         this.insert_coordinates(tracker_params, coordinate_params, (data[1] === 'Emergency' || data[1] === 'Alert' ? data[13] : ''));
          
          //If emergency message type
          if(data[1] === 'Emergency')
          {
-               //Send ACK command to tracker
-               this.sendCommand('ACK');
+            //Send ACK command to tracker
+            this.sendCommand('ACK;' + this.getID());
          }
       }
       else if(data[1] === 'Alive')
       {
          //Log connection alive
          logger.info("Tracker ST940@" + this.getID() + " connected.");
+
+         //Send notification to users subscribed on this topic
+         this.sendNotification("Notify_Available", {
+            title: "Rastreador conectado",
+            content: "Dispositivo está conectado ao servidor.",
+            datetime: Date.now().toString()
+         });
       }
       else if(data[1] === 'RES')
       {
@@ -350,14 +384,13 @@ class ST940 extends Tracker
                this.confirmConfiguration("ShockEmergency", data[data.indexOf("FUNCTION") + 2]);
 
                //Get deep sleep configuration from response
-               this.confirmConfiguration("DeepSleep", data[data.indexOf("SVC") + 10], data[data.indexOf("SVC") + 10]);
+               this.confirmConfiguration("DeepSleep", data[data.indexOf("SVC") + 10]);
 
                //Get magnet alert configuration from response
                this.confirmConfiguration("Magnet", data[data.indexOf("SVC") + 3]);
 
-               //Get
+               //Get configuration used to retrieve tracker settings
                this.confirmConfiguration("RequestConfig", "1");
-
                break;
 
             case 'REPORT':
@@ -384,9 +417,6 @@ class ST940 extends Tracker
                this.confirmConfiguration("DeepSleep", data[13]);
                break;
          }
-
-         //Call method to confirm command response
-         this.confirmCommand(data[2]);
       }
       else
       {
@@ -394,8 +424,8 @@ class ST940 extends Tracker
          logger.warn("Unknown data received from tracker " + data.join(';'));
       }
 
-      //Call method to execute next command (if exists)
-      this.applyConfigurations();
+      //Call method to confirm command sent by tracker
+      this.confirmCommand(data[2]);
    }
 
    sendCommand(command)
@@ -499,7 +529,7 @@ class ST940 extends Tracker
          .then(() => 
          {
             //Log debug
-            logger.debug("Configuration '" + tracker_config.name + "' retrieved from tracker " + this.getID() + " successfully.");
+            logger.debug("Configuration '" + tracker_config.name + "' confirmed by tracker ST940@" + this.getID() + " successfully.");
          })
          .catch(error => 
          {
@@ -507,22 +537,80 @@ class ST940 extends Tracker
             logger.error("Error updating configuration retrieved from tracker " + this.getID() + " on database: " + error);
          });
       }
+      else
+      {
+         //Log warn
+         logger.warn("Configuration '" + tracker_config.name + "' retrieved from tracker " + this.getID() + " is different from user defined configuration.");
+      }
    }
 
    confirmCommand(command_name)
    {
       //Try to get command from pending list
-      var command = this.getPendingCommand(command_name);
+      var command = this.getPendingCommands()[command_name];
 
       //If this command was pending
       if(command)
       {
-         //Remove command from pending list
-         delete this.getPendingCommands()[command_name];
-
          //Call method to update progress
-         this.updateConfigProgress(1, command.description, "Confirmado pelo rastreador");
+         this.updateConfigProgress(1, command.description, "Confirmado pelo rastreador", command_name);
       }
+      else
+      {
+         //Else, call method to check if there is any pending command
+         this.applyConfigurations();
+      }
+   }
+
+   
+   insert_coordinates(tracker_params, coordinate_params, msg_code)
+   {
+      //Check msg code sent by the tracker
+      if(msg_code == "1")
+       {
+           //Shock emergency alert
+           super.insert_coordinates(tracker_params, coordinate_params, 
+           {
+               topic: 'Notify_ShockEmergency',
+               title: 'Alerta de vibração',
+               content: 'Vibração detectada pelo dispositivo'
+           });
+       }
+       else if(msg_code == "2")
+       {
+           //SOS button pressed
+           super.insert_coordinates(tracker_params, coordinate_params, 
+           {
+               topic: 'Tracker_SOS',
+               title: 'Alerta de SOS',
+               content: 'Botão de SOS pressionado no dispositivo'
+           });
+       }
+       else if(msg_code == "56")
+       {
+           //SOS button pressed
+           super.insert_coordinates(tracker_params, coordinate_params, 
+           {
+               topic: 'Notify_Magnet',
+               title: 'Alerta de magnetismo',
+               content: 'Base magnética próxima ao dispositivo'
+           });
+       }
+       else if(msg_code == "57")
+       {
+           //SOS button pressed
+           super.insert_coordinates(tracker_params, coordinate_params, 
+           {
+               topic: 'Notify_Magnet',
+               title: 'Alerta de magnetismo',
+               content: 'Base magnética removida do dispositivo'
+           });
+       }
+       else
+       {
+         //Insert coordinates on DB with default notification params
+         super.insert_coordinates(tracker_params, coordinate_params);
+       }
    }
 }
 

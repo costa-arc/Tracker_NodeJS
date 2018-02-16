@@ -27,13 +27,13 @@ class Tracker
     set(key, value) 
     {
         //Set value on selected key
-        this._data.set(key, value);
+        this._data[key] = value;
     }
     
     //Get data from tracker
     get(value) 
     {
-        return this._data.get(value);
+        return this._data[value];
     }
 
     //Get tracker identification
