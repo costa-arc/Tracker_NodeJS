@@ -128,8 +128,8 @@ class ST940 extends Tracker
                {
                   progress: 0,
                   step: "PENDING",
-                  description: "Configuração pendente",
-                  status: "Aguardando conexão com rastreador",
+                  description: "Aguardando conexão com rastreador",
+                  status: "Processo iniciado às " + moment().format("HH:mm - DD/MM"),
                   pending: this.getPendingCommandsCount(),
                   server: this.getServerName(),
                   datetime: new Date()
@@ -244,7 +244,7 @@ class ST940 extends Tracker
          if(command_sent)
          {
             //Update progress
-            this.updateConfigProgress(0.5, pending.description, "Comando enviado ao rastreador");
+            this.updateConfigProgress(0.5, pending.description, "Comando enviado às " + moment().format("HH:mm - DD/MM"));
          }
       }
       else if(this.get("lastConfiguration").step == "PENDING")
@@ -553,7 +553,7 @@ class ST940 extends Tracker
       if(command)
       {
          //Call method to update progress
-         this.updateConfigProgress(1, command.description, "Confirmado pelo rastreador", command_name);
+         this.updateConfigProgress(1, command.description, "Confirmado pelo rastreador às " + moment().format("HH:mm - DD/MM"), command_name);
       }
       else
       {
