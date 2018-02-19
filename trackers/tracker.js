@@ -119,9 +119,9 @@ class Tracker
     }
 
     //Set Pending configuration array
-    setPendingConfigs(value)
+    resetPendingConfigs()
     {
-        this._pending_configs = value;
+        this._pending_configs = [];
     }
 
     //Send notification using Google Firebase Cloud Messaging
@@ -145,7 +145,7 @@ class Tracker
             this.setConfigurations({});
 
             //Initialize pending configuration array
-            this.setPendingConfigs([]);
+            this.resetPendingConfigs();
 
             //For each config load from DB
             result.forEach(config => 
@@ -156,8 +156,8 @@ class Tracker
                 //Append configuration to array
                 this.getConfigurations()[config.name] = config;
 
-                //Check configuration status
-                if(config.status.step != "SUCCESS")
+                //Check if configuration is not finished yet
+                if(!config.status.finished)
                 {
                     //Append to pending configuration array
                     this.getPendingConfigs().push(config);
