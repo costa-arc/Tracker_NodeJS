@@ -1,5 +1,5 @@
 //Import GSM modem package
-var modem = require('modem').Modem()
+var modem_module = require('modem')
 
 //Import date time parser
 const moment = require('moment');
@@ -21,9 +21,6 @@ class SMS_Parser extends EventEmitter
     //Initialize SMS array
     this._sms_sent = {};
 
-    //Initialize modem module
-    this._modem = modem;
-
     //Save server name
     this._server_name = server_name;
 
@@ -33,8 +30,11 @@ class SMS_Parser extends EventEmitter
     //Phone number
     this._phone_number = 'Not available';
 
+    //Initialize modem
+    this._modem = modem_module.initialize();
+
     //Initialize modem configuration
-    this.initialize(modem);
+    this.configureModem(this._modem);
   }
 
   //Get modem used to receive data
@@ -65,143 +65,166 @@ class SMS_Parser extends EventEmitter
     return this._sms_sent[sms_reference];
   }
 
-  initialize(modem)
-  {
-    //Error handling'
-    modem.on('error', error =>
-    {
-      //Log error
-      logger.error("Connection to modem failed: " + error);
-
-      //Close connection to modem
-      modem.close();
-
-    });
-
-    //Open connection on modem serial port
-    modem.open(this._com_port, result =>
-    {
-      //On command sent to modem
-      modem.on('command', function(command) {
-
-        //Log command
-        logger.debug("Modem <- [" + command + "] ");
-      });
-
-      //Execute modem configuration (RESET MODEM)
-      modem.execute("ATZ");
-
-      //Execute modem configuration (DISABLE ECHO)
-      modem.execute("ATE0");
-
-      //Execute modem configuration (ENABLE TX/RX)
-      modem.execute("AT+CFUN=1");
-
-      //Execute modem configuration (SET PDU MODE)
-      modem.execute("AT+CMGF=0");
-
-      //Execute modem configuration (ENABLE ERROR MESSAGES)
-      modem.execute("AT+CMEE=2");
-
-      //Execute modem configuration (REQUEST DELIVERY REPORT)
-      modem.execute("AT+CSMP=49,167,0,0");
-
-      //Execute modem command (REQUEST MANUFACTURER)
-      modem.execute("AT+CGMI", function(response)
+   configureModem(modem, reset_modem)
+   {
+      //Error handling'
+      modem.on('error', error =>
       {
-        //If this is a HUAWEI MODEM
-        if(response.includes('huawei'))
-        {
-          //Execute modem configuration (REQUEST SMS NOTIFICATION - HUAWEI)
-          modem.execute("AT+CNMI=2,1,0,2,0");
-        }
-        else
-        {
-          //Execute modem configuration (REQUEST SMS NOTIFICATION - DLINK)
-          modem.execute("AT+CNMI=2,1,0,1,0");
-        }
-      });
+         //Log error
+         logger.error("Connection to modem failed: " + error);
 
-      //Execute modem command (REQUEST PHONE NUMBER)
-      modem.execute("AT+CNUM", (response) =>
-      {
-        //Get start index from the phone number
-        var startIndex = response.indexOf('55');
-
-        //If this is a HUAWEI MODEM
-        if(startIndex > 0)
-        {
-          //Remove first part of response string
-          response = response.substring(startIndex);
-
-          //Get phone number
-          this.setPhoneNumber(response.substring(2, response.indexOf('"')));
-
-          //Log information
-          logger.info("Modem successfully initialized: " + this.getPhoneNumber());
-        }
-        else
-        {
-          //Log error
-          logger.error("Error retrieving phone number: " + response);
-        }
-      });
-
-      //On SMS received
-      modem.on('sms received', (sms) =>
-      {
-        //Log output
-        logger.debug("SMS RECEIVED", sms);
-
-        //Call method to handle sms
-        this.emit('data', 'sms_received',
-        { 
-          datetime: moment().format('YYYY/MM/DD_hh_mm_ss_SSS'),
-          source: this.formatPhoneNumber(sms.sender), 
-          content: sms 
-        });
-      });
-
-      //On data received from modem
-      modem.on('data', function(data) {
-
-        //Log any data ouput from modem
-        logger.debug("Modem -> [" + data.join().replace(/(\r\n|\n|\r)/gm,"") + "]");
-      });
-      
-      //On SMS delivery receipt received
-      modem.on('delivery', (delivery_report) =>
-      {
-        //Log output
-        logger.debug("DELIVERY REPORT", delivery_report);
-
-        //Call method to handle delivery report
-        this.emit('data', 'delivery_report',
-        { 
-          datetime: moment().format('YYYY/MM/DD_hh_mm_ss_SSS'),
-          source: this.formatPhoneNumber(delivery_report.sender), 
-          content: delivery_report 
-        });
-      });
-
-      //On modem memmory full
-      modem.on('memory full', function(sms) 
-      {
-        //Execute modem command (DELETE ALL MESSAGES)
-        modem.execute("AT+CMGD=1,4", function(escape_char, response) 
-        {
-          //Log data
-          logger.info("Modem memory full, erasing SMS: " + response)
-        });
+         //Close connection to modem
+         modem.close(error);
       });
 
       //On modem connection closed
-      modem.on('close', function() 
+      modem.on('close', reason => 
       {
-        //Log warning 
-        logger.debug("Modem connection closed, trying to open again...");
+         //Log warning 
+         logger.debug("Modem connection closed: " + reason + " / Trying to open again in 30 seconds");
+
+         //Wait 30 seconds before opening again
+         setTimeout(() => 
+         {
+            //Reinitialize modem
+            this._modem = modem_module.initialize();
+
+            //Reinitialize modem configuration
+            this.configureModem(this._modem, true);
+            
+         }, 30000);
       });
-    });
+
+      //Open connection on modem serial port
+      modem.open(this._com_port, result =>
+      {
+         //On command sent to modem
+         modem.on('command', function(command) 
+         {
+            //Log command
+            logger.debug("Modem <- [" + command + "] ");
+         });
+
+         //Execute modem configuration (RESET MODEM)
+         modem.execute("ATZ");
+
+         //Execute modem configuration (DISABLE ECHO)
+         modem.execute("ATE0");
+
+         //Execute modem configuration (ENABLE TX/RX)
+         modem.execute("AT+CFUN=1");
+
+         //Execute modem configuration (SET PDU MODE)
+         modem.execute("AT+CMGF=0");
+
+         //Execute modem configuration (ENABLE ERROR MESSAGES)
+         modem.execute("AT+CMEE=2");
+
+         //Execute modem configuration (REQUEST DELIVERY REPORT)
+         modem.execute("AT+CSMP=49,167,0,0");
+
+         //Execute modem command (REQUEST MANUFACTURER)
+         modem.execute("AT+CGMI", function(response)
+         {
+            //If this is a HUAWEI MODEM
+            if(response.includes('huawei'))
+            {
+               //Execute modem configuration (REQUEST SMS NOTIFICATION - HUAWEI)
+               modem.execute("AT+CNMI=2,1,0,2,0");
+            }
+            else
+            {
+               //Execute modem configuration (REQUEST SMS NOTIFICATION - DLINK)
+               modem.execute("AT+CNMI=2,1,0,1,0");
+            }
+            });
+
+         //Execute modem command (REQUEST PHONE NUMBER)
+         modem.execute("AT+CNUM", (response) =>
+         {
+            //Get start index from the phone number
+            var startIndex = response.indexOf('55');
+
+            //If this is a HUAWEI MODEM
+            if(startIndex > 0)
+            {
+               //Remove first part of response string
+               response = response.substring(startIndex);
+
+               //Get phone number
+               this.setPhoneNumber(response.substring(2, response.indexOf('"')));
+
+               //Log information
+               logger.info("Modem successfully initialized: " + this.getPhoneNumber());
+            }
+            else
+            {
+               //Log error
+               logger.error("Error retrieving phone number: " + response);
+            }
+         });
+
+         //If requested to reset modem
+         if(reset_modem)
+         {
+            //Log warning
+            logger.warn("Modem reset requested, initializing");
+
+            //Execute modem configuration (TURN OFF MODEM FEATURES)
+            modem.execute("AT+CFUN=0,1");
+            
+            //Execute modem configuration (INITIALIZE MODEM AGAIN)
+            modem.execute("AT+CFUN=1,1");
+         }
+
+         //On SMS received
+         modem.on('sms received', (sms) =>
+         {
+            //Log output
+            logger.debug("SMS RECEIVED", sms);
+
+            //Call method to handle sms
+            this.emit('data', 'sms_received',
+            { 
+               datetime: moment().format('YYYY/MM/DD_hh_mm_ss_SSS'),
+               source: this.formatPhoneNumber(sms.sender), 
+               content: sms 
+            });
+         });
+
+         //On data received from modem
+         modem.on('data', function(data) 
+         {
+            //Log any data ouput from modem
+            logger.debug("Modem -> [" + data.join().replace(/(\r\n|\n|\r)/gm,"") + "]");
+         });
+         
+         //On SMS delivery receipt received
+         modem.on('delivery', (delivery_report) =>
+         {
+            //Log output
+            logger.debug("DELIVERY REPORT", delivery_report);
+
+            //Call method to handle delivery report
+            this.emit('data', 'delivery_report',
+            { 
+               datetime: moment().format('YYYY/MM/DD_hh_mm_ss_SSS'),
+               source: this.formatPhoneNumber(delivery_report.sender), 
+               content: delivery_report 
+            });
+         });
+
+         //On modem memmory full
+         modem.on('memory full', function(sms) 
+         {
+            //Execute modem command (DELETE ALL MESSAGES)
+            modem.execute("AT+CMGD=1,4", function(escape_char, response) 
+            {
+               //Log data
+               logger.info("Modem memory full, erasing SMS: " + response)
+            });
+         });
+      });
   }
 
   send_sms(tracker, text, callback)
