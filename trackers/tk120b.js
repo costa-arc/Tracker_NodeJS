@@ -124,21 +124,8 @@ class TK102B extends Tracker
                     }
                     else
                     {
-                        //No command required, config completed
-                        configuration.status.command = '';
-                        configuration.status.completed = true;
-                        configuration.status.step = 'SUCCESS';
-                        configuration.status.description = "Configuração desativada às " + moment().format("HH:mm - DD/MM");
-                        configuration.status.datetime = new Date();
-
-                        //Save data on firestore DB
-                        this.getDB()
-                            .collection("Tracker/" + this.getID() + "/Configurations")
-                            .doc(configuration.name)
-                            .set(configuration);
-
-                        //End method
-                        return;
+                        //No command required, config finished
+                        this.confirmConfiguration("StatusCheck", false, 'ok');
                     }
                     break;
 
@@ -198,11 +185,11 @@ class TK102B extends Tracker
 
                     //Update configuration data on SMS error
                     configuration.status.step = "ERROR";
-                    configuration.status.description = "Erro no envio ocorrido às " + moment().format("HH:mm - DD/MM");
+                    configuration.status.description = "Falha no envio ocorrida às " + moment().format("HH:mm - DD/MM");
                     configuration.status.datetime = new Date();
 
                     //Error executing configs, clear pending array
-                    this.setPendingConfigs([]);
+                    this.resetPendingConfigs();
 
                     //Call method to end configuration
                     this.applyConfigurations();
@@ -218,7 +205,7 @@ class TK102B extends Tracker
                     .set(configuration);
             });
         }
-        else
+        else if(this.get("lastConfiguration").step == "PENDING")
         {
             //Initialize last update result
             var lastConfiguration = 
@@ -278,17 +265,17 @@ class TK102B extends Tracker
         }
     }
 
-    confirmConfiguration(configName, enabled, response, remove)
+    confirmConfiguration(configName, enabled, response)
     {
         //Get configuration by name
         var config = this.getConfiguration(configName);
 
-        //Check if config currently available to this tracker
-        if(config)
+        //Check if config currently pending to tracker
+        if(config && !config.status.finished)
         {
             //Change configuration status
             config.enabled = enabled;
-            config.status.completed = true;
+            config.status.finished = true;
             config.status.datetime = new Date();
 
             //Check if configuration successfully applied
@@ -308,7 +295,7 @@ class TK102B extends Tracker
                 config.status.description = "Dispositivo indicou erro às " + moment().format("HH:mm - DD/MM");
 
                 //Reset configuration array
-                this.setPendingConfigs([]);
+                this.resetPendingConfigs();
 
                 //Call method to end configurations
                 this.applyConfigurations();
@@ -320,35 +307,24 @@ class TK102B extends Tracker
                 config.status.description = "Dispositivo recusou a senha em " + moment().format("HH:mm - DD/MM");
 
                 //Reset configuration array
-                this.setPendingConfigs([]);
+                this.resetPendingConfigs();
 
                 //Call method to end configurations
                 this.applyConfigurations();
             }
 
-            //Check if user wants to delete configuration after success
-            if(remove && config.status.step == "SUCCESS")
-            {
-                    //Initial configuration successfull, no longer required
-                    this.getDB()
-                    .collection("Tracker/" + this.getID() + "/Configurations")
-                    .doc(config.name)
-                    .delete();
-            }
-            else
-            {
-                //Update configuration status on firestore DB
-                this.getDB()
-                    .collection("Tracker/" + this.getID() + "/Configurations")
-                    .doc(config.name)
-                    .set(config)
-                    .then(function () 
-                    {
-                        // Message already saved on DB, delete from modem memmory
-                        logger.info("Tracker " + this.get('name') + " config '" + configName + "' successfully executed")
+            //Update configuration status on firestore DB
+            this.getDB()
+                .collection("Tracker/" + this.getID() + "/Configurations")
+                .doc(config.name)
+                .set(config)
+                .then(() =>
+                {
+                    // Message already saved on DB, delete from modem memmory
+                    logger.info("Tracker " + this.get('name') + " config '" + configName + "' successfully executed")
 
-                    }.bind(this));
-            }        
+                });
+                
         }
     }
 
@@ -442,17 +418,17 @@ class TK102B extends Tracker
                 else if(sms_text.includes('RESET '))
                 {
                     //Confirm configuration enabled
-                    this.confirmConfiguration('Reset', true, sms_text, true);
+                    this.confirmConfiguration('Reset', true, sms_text);
                 }
                 else if(sms_text.includes('begin '))
                 {
                     //Confirm configuration enabled
-                    this.confirmConfiguration('Begin', true, sms_text, true);
+                    this.confirmConfiguration('Begin', true, sms_text);
                 }
                 else if(sms_text.includes('admin '))
                 {
                     //Confirm configuration enabled
-                    this.confirmConfiguration('Admin', true, sms_text, true);
+                    this.confirmConfiguration('Admin', true, sms_text);
                 }
                 else if(sms_text.includes('password err'))
                 {
@@ -552,7 +528,7 @@ class TK102B extends Tracker
                             this.insert_coordinates(tracker_params, coordinate_params, sms_text);
 
                             //Confirm location configuration (if requested by user)
-                            this.confirmConfiguration("Location", true, "ok", true);
+                            this.confirmConfiguration("Location", true, "ok");
                         } 
                         else 
                         {
@@ -636,7 +612,7 @@ class TK102B extends Tracker
                 if(configuration)
                 {
                     //Check if there is any pending configuration
-                    this.updateConfigProgress(0.6, configuration.description, "Rastreador recebeu configuração em " + moment().format("HH:mm - DD/MM"));
+                    this.updateConfigProgress(0.6, configuration.description, "Configuração recebida em " + moment().format("HH:mm - DD/MM"));
                 }
             }
             else
@@ -650,10 +626,10 @@ class TK102B extends Tracker
                 {
                     //Show success message to user
                     configuration.status.step = "ERROR";
-                    configuration.status.description = "Dispositivo não disponível até " + moment().format("HH:mm - DD/MM");
+                    configuration.status.description = "Dispositivo indisponível às " + moment().format("HH:mm - DD/MM");
 
                     //Reset configuration array
-                    this.setPendingConfigs([]);
+                    this.resetPendingConfigs();
 
                     //Call method to end configurations
                     this.applyConfigurations();

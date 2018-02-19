@@ -32,6 +32,12 @@ class ST940 extends Tracker
       return this._pending_commands;
    }
 
+   //Clear dictionary of pending commands
+   resetPendingCommands()
+   {
+      this._pending_commands = {};
+   }
+
    //Get first pending command
    getPendingCommand()
    {
@@ -61,6 +67,9 @@ class ST940 extends Tracker
       //Check if tracker has any configuration available
       if(this.getConfigurationsCount() > 0)
       {
+         //Reset pending commands
+         this.resetPendingCommands();
+
          //For each pending configuration
          for(let config of this.getPendingConfigs())
          {

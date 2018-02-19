@@ -187,9 +187,11 @@ function monitorTrackers()
           //Load data on tracker
           trackers[id].loadData(docChange.doc.data());
 
-          //Check if tracker configuration is loaded
-          if(trackers[id].get('lastConfiguration') == null || trackers[id].getConfigurationsCount() == 0)
-          {
+          //Check if tracker configuration is not loaded, or if it is not configured yet or user canceled configuration
+          if(trackers[id].getConfigurationsCount() == 0 ||
+             trackers[id].get('lastConfiguration') == null || 
+             trackers[id].get('lastConfiguration').step == "CANCELED") {
+
             //Load configurations from dabatase
             trackers[id].loadConfigFromDB();
           }
