@@ -759,15 +759,31 @@ class TK102B extends Tracker
                 content: 'Vibração detectada pelo dispositivo.'
             });
         }
-        else if(sms_text.startsWith("SOS!"))
+        else if(sms_text.startsWith("Help me!"))
         {
             //Insert coordinates on DB and build shock alert notification
             super.insert_coordinates(tracker_params, coordinate_params, 
             {
-                topic: 'Notify_Shock',
-                title: 'Alerta de vibração',
-                content: 'Vibração detectada pelo dispositivo.'
+               topic: 'Tracker_SOS',
+               title: 'Alerta de emergência (SOS)',
+               content: 'Botão de SOS pressionado no dispositivo'
             });
+
+            //Send command to disable SOS alarm
+            this.disableAlert("help me");
+        }
+        else if(sms_text.startsWith("Low Battery!"))
+        {
+            //Insert coordinates on DB and build shock alert notification
+            super.insert_coordinates(tracker_params, coordinate_params, 
+            {
+                topic: 'Notify_LowBattery',
+                title: 'Alerta de bateria fraca',
+                content: 'Nível de bateria abaixo do ideal'
+            });
+
+            //Send command to disable low battery alert
+            this.disableAlert("low battery123456");
         }
         else
         {
