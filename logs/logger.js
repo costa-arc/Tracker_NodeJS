@@ -22,13 +22,13 @@ module.exports = winston.createLogger({
       handleExceptions: true
     }), 
     new winston.transports.File({ 
-      filename: './logs/info.log', 
+      filename: '/var/log/tracker_info.log', 
       level: 'info', 
       format: logFormat,
       maxsize: 5000000, 
       maxfiles:10 }),
     new winston.transports.File({ 
-      filename: './logs/debug.log', 
+      filename: '/var/log/tracker_debug.log', 
       format: logFormat,
       maxsize: 1000000, 
       maxfiles: 20 })

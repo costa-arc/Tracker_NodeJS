@@ -324,7 +324,6 @@ class TK102B extends Tracker
                     logger.info("Tracker " + this.get('name') + " config '" + configName + "' successfully executed")
 
                 });
-                
         }
     }
 
@@ -591,7 +590,7 @@ class TK102B extends Tracker
                     this.insert_coordinates(tracker_params, coordinate_params, sms_text);
 
                     //Confirm location configuration (if requested by user)
-                    this.confirmConfiguration("Location", true, "ok", true);
+                    this.confirmConfiguration("Location", true, "ok");
                 }
                 else
                 {
@@ -794,6 +793,9 @@ class TK102B extends Tracker
 
     disableAlert(command)
     {
+      //Log debug
+      logger.debug("Sending '" + command + "' to disable alert from tracker" + this.get('name'));
+
       //Send SMS to request command
       this.getParser().send_sms(this, command, (sent, result) =>
       {
@@ -806,8 +808,8 @@ class TK102B extends Tracker
             .doc(result.id)
             .set(
             {
-               server: self.getServerName(),
-               from: self.getParser().getPhoneNumber(),
+               server: this.getServerName(),
+               from: this.getParser().getPhoneNumber(),
                text: result.text,
                reference: result.reference,
                sentTime: new Date(),
