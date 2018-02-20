@@ -526,7 +526,7 @@ class TK102B extends Tracker
                             //Define coordinates params to be inserted/updated
                             var coordinate_params = 
                             {
-                                cell_id: requestParams.mcc + "_" + requestParams.mnc + "_" + requestParams.cid + "_" + requestParams.lac,
+                                cellID: requestParams.mcc + "_" + requestParams.mnc + "_" + requestParams.cid + "_" + requestParams.lac,
                                 batteryLevel: this.get('batteryLevel'),
                                 signalLevel: this.get('signalLevel'),
                                 datetime: new Date(),

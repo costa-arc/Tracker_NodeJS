@@ -318,7 +318,7 @@ class ST940 extends Tracker
          var speed = data[8];
 
          //Battery level
-         var batteryLevel = Math.max(Math.min(((parseFloat(data[11]) - 3.45) * 140).toFixed(0), 5), 100) + '%';
+         var batteryLevel = Math.min(Math.max(((parseFloat(data[11]) - 3.45) * 140).toFixed(0), 5), 100) + '%';
 
          //Define tracker params to be updated
          var tracker_params = 
@@ -327,7 +327,7 @@ class ST940 extends Tracker
                signalLevel: 'N/D',
                lastCoordinate: 
                {
-                  type: "GSM",
+                  type: "GPS",
                   location: coordinates,
                   datetime: datetime
                },
