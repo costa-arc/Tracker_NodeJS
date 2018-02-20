@@ -380,8 +380,8 @@ class ST940 extends Tracker
             {
                mcc: '724',
                mnc: '006',
-               cid: parseInt(data[17].substring(0, 4), 16).toString(),
-               lac: parseInt(data[17].substring(4, 8), 16).toString()
+               cid: parseInt(data[(data[1] === 'Location' ? 17 : 16)].substring(0, 4), 16).toString(),
+               lac: parseInt(data[(data[1] === 'Location' ? 17 : 16)].substring(4, 8), 16).toString()
             }
 
             //Log data
@@ -530,9 +530,10 @@ class ST940 extends Tracker
       //Get tcp connection to tracker if available
       var connection = this.getConnection();
 
-      //Check if available
-      if(connection != null)
+      //Check if connection socket exists
+      if(connection != null && connection.socket != null)
       {
+         //Check if connection is active
          if(connection.socket.connected)
          {
             try
