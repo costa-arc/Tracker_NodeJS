@@ -85,6 +85,23 @@ class ST940 extends Tracker
                      });
                      break;
 
+               case "Location":
+                     //Create REPORT command
+                     this.setPendingCommand("FIND", 
+                     {
+                        command: "FIND;" + this.getID() + ";",
+                        description: "Solicitando localização atual"
+                     });
+                     break;
+                     
+               case "TurnOff":
+                  //Create REPORT command
+                  this.setPendingCommand("OFF", 
+                  {
+                     command: "OFF;" + this.getID() + ";" + this.getConfiguration("TurnOff").value,
+                     description: "Solicitando desligamento temporário"
+                  });
+                  break;
                case "Magnet":
                case "DeepSleep":
                      //Create SERVICE command
@@ -256,7 +273,7 @@ class ST940 extends Tracker
             this.updateConfigProgress(0.5, pending.description, "Comando enviado às " + moment().format("HH:mm - DD/MM"));
          }
       }
-      else if(this.get("lastConfiguration").step == "PENDING")
+      else if(this.get("lastConfiguration") != null && this.get("lastConfiguration").step == "PENDING")
       {
          //Initialize last update result
          var lastConfiguration = 
@@ -317,6 +334,12 @@ class ST940 extends Tracker
          //Parse speed
          var speed = data[8];
 
+         //Parse course
+         var course = data[9];
+
+         //Get if GPS signal is fixed or not on this message
+         var coordinate_type = (data[10] == "1" ? "GPS" : "GSM");
+
          //Battery level
          var batteryLevel = Math.min(Math.max(((parseFloat(data[11]) - 3.45) * 140).toFixed(0), 5), 100) + '%';
 
@@ -327,31 +350,47 @@ class ST940 extends Tracker
                signalLevel: 'N/D',
                lastCoordinate: 
                {
-                  type: "GPS",
+                  type: coordinate_type,
                   location: coordinates,
                   datetime: datetime
                },
                lastUpdate: new Date()
          };
 
-         //Define coordinates params to be inserted/updated
-         var coordinate_params = 
+         //Get location status (GPS fixed or not)
+         if(coordinate_type == "GPS")
          {
-               datetime: datetime,
-               signalLevel: 'N/D',
-               batteryLevel: batteryLevel,
-               position: coordinates,
-               speed: speed
-         }
+            //Define coordinates params to be inserted/updated
+            var coordinate_params = 
+            {
+                  datetime: datetime,
+                  signalLevel: 'N/D',
+                  batteryLevel: batteryLevel,
+                  position: coordinates,
+                  speed: speed
+            }
 
-         //Insert coordinates on DB (if its alert or emergency message, also send message code)
-         this.insert_coordinates(tracker_params, coordinate_params, (data[1] === 'Emergency' || data[1] === 'Alert' ? data[13] : ''));
+            //Insert coordinates on DB (if its alert or emergency message, also send message code)
+            this.insert_coordinates(tracker_params, coordinate_params, (data[1] === 'Emergency' || data[1] === 'Alert' ? data[13] : ''));
+         }
+         else
+         {
+
+         }
          
          //If emergency message type
          if(data[1] === 'Emergency')
          {
             //Send ACK command to tracker
             this.sendCommand('ACK;' + this.getID());
+         }
+         else if(data[1] === 'Location')
+         {
+            //Get periodic update when active configuration from response
+            this.confirmConfiguration("Location", "1");
+
+            //If location was sent by tracker in response to a FIND command, confirm command execution
+            this.confirmCommand("FIND");
          }
       }
       else if(data[1] === 'Alive')
@@ -424,6 +463,12 @@ class ST940 extends Tracker
 
                //Get periodic update when active configuration from response
                this.confirmConfiguration("DeepSleep", data[13]);
+               break;
+
+            case 'OFF':
+
+               //Get periodic update when active configuration from response
+               this.confirmConfiguration("TurnOff", "1", data[4]);
                break;
          }
       }
@@ -528,7 +573,7 @@ class ST940 extends Tracker
       }
 
       //Check if tracker configuration matches user configuration (if exists)
-      if(user_config == null || (user_config.enabled == tracker_config.enabled && user_config.value == tracker_config.value))
+      if(user_config == null || !user_config.status.finished || (user_config.enabled == tracker_config.enabled && user_config.value == tracker_config.value))
       {
          //Insert configuration on DB if user has not set configuration yet
          this.getDB()

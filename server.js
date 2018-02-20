@@ -124,11 +124,14 @@ tcp_parser.on('data', (tcp_socket, data) =>
               .set(tracker_params, { merge: true })
               .then(() => 
               {
-                //Add tcp connection to tracker
-                trackers[data.source].setConnection(tcp_socket);
+                  //Add tcp connection to tracker
+                  trackers[data.source].loadData(tracker_params);
+                  
+                  //Add tcp connection to tracker
+                  trackers[data.source].setConnection(tcp_socket);
 
-                //Call method to parse data
-                trackers[data.source].parseData(data.content);
+                  //Call method to parse data
+                  trackers[data.source].parseData(data.content);
               });
           }
       });
