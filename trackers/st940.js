@@ -531,21 +531,21 @@ class ST940 extends Tracker
       var connection = this.getConnection();
 
       //Check if connection socket exists
-      if(connection != null && connection.socket != null)
+      if(connection != null)
       {
          //Check if connection is active
-         if(connection.socket.connected)
+         if(connection.writable)
          {
             try
             {
-                  //Send command to tracker
-                  socket.write('AT^ST910;'+ command);
+               //Send command to tracker
+               connection.write('AT^ST910;'+ command);
 
-                  //Log data
-                  logger.debug('ST940@' + this.getID() + ' (' + connection.remoteAddress + ') <- [AT^ST910;' + command + "]");
+               //Log data
+               logger.debug('ST940@' + this.getID() + ' (' + connection.remoteAddress + ') <- [AT^ST910;' + command + "]");
 
-                  //Command sent, return ture
-                  return true;
+               //Command sent, return ture
+               return true;
             }
             catch(error)
             {
