@@ -485,7 +485,7 @@ class ST940 extends Tracker
             value: null,
             status: 
             {
-               completed: false,
+               finished: false,
                datetime: new Date(),
                description: "Aguardando envio...",
                step: "REQUESTED"
@@ -519,7 +519,7 @@ class ST940 extends Tracker
          priority: 2,
          status: 
          {
-               completed: true,
+               finished: true,
                datetime: new Date(),
                description: "Configuração confirmada pelo dispositivo",
                step: "SUCCESS"
