@@ -123,10 +123,7 @@ tcp_parser.on('data', (tcp_socket, data) =>
               .doc(data.source)
               .set(tracker_params, { merge: true })
               .then(() => 
-              {
-                  //Add tcp connection to tracker
-                  trackers[data.source].loadData(tracker_params);
-                  
+              {                  
                   //Add tcp connection to tracker
                   trackers[data.source].setConnection(tcp_socket);
 

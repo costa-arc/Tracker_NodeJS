@@ -660,6 +660,16 @@ class ST940 extends Tracker
                content: 'Base magnética removida do dispositivo'
            });
        }
+       else if(msg_code == "58")
+       {
+           //SOS button pressed
+           super.insert_coordinates(tracker_params, coordinate_params, 
+           {
+               topic: 'Notify_LowBattery',
+               title: 'Alerta de bateria fraca',
+               content: 'Nível de bateria abaixo do ideal'
+           });
+       }
        else
        {
          //Insert coordinates on DB with default notification params

@@ -26,7 +26,7 @@ module.exports = winston.createLogger({
       level: 'info', 
       format: logFormat,
       maxsize: 5000000, 
-      maxfiles:10 }),
+      maxfiles: 10 }),
     new winston.transports.File({ 
       filename: '/var/log/tracker_debug.log', 
       format: logFormat,
