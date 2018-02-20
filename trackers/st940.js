@@ -279,7 +279,7 @@ class ST940 extends Tracker
          var lastConfiguration = 
          {
              step: "SUCCESS", 
-             description: "Configuração bem sucedida",
+             description: "Solicitação bem sucedida",
              status: "Processo finalizado às " + moment().format("HH:mm - DD/MM"),
              server: this.getServerName(),
              datetime: new Date()
@@ -375,7 +375,50 @@ class ST940 extends Tracker
          }
          else
          {
+            //GPS not fixed, get GSM data from message
+            var requestParams =
+            {
+               mcc: '724',
+               mnc: '006',
+               cid: parseInt(data[17].substring(0, 4), 16).toString(),
+               lac: parseInt(data[17].substring(4, 8), 16).toString()
+            }
 
+            //Log data
+            logger.debug("Requesting geolocation from cell tower", requestParams);
+
+            //will use requests available in order of api key provided
+            this.getGeolocation().request(requestParams, (error, result) =>
+            {  
+                //If result is successfull
+                if (result && result.latitude < 90 && result.longitude < 90) 
+                {
+                    //Create coordinates object
+                    var coordinates = this.getGeoPoint(result.latitude, result.longitude);
+
+                    //Define coordinates params to be inserted/updated
+                    var coordinate_params = 
+                    {
+                        cellID: requestParams.mcc + "_" + requestParams.mnc + "_" + requestParams.cid + "_" + requestParams.lac,
+                        datetime: datetime,
+                        signalLevel: 'N/D',
+                        batteryLevel: batteryLevel,
+                        position: coordinates,
+                        speed: speed
+                    }
+
+                    //Update tracker params coordinate
+                    tracker_params.lastCoordinate.location = coordinates;
+                    
+                    //Insert coordinates on db with default notification
+                    this.insert_coordinates(tracker_params, coordinate_params, (data[1] === 'Emergency' || data[1] === 'Alert' ? data[13] : ''));
+                } 
+                else 
+                {
+                    //Log error
+                    logger.error("Failed to geolocate data from GSM cell tower", requestParams);
+                }
+            });
          }
          
          //If emergency message type
@@ -485,32 +528,40 @@ class ST940 extends Tracker
    sendCommand(command)
    {
       //Get tcp connection to tracker if available
-      var connectionAvailable = this.getConnection();
+      var connection = this.getConnection();
 
       //Check if available
-      if(connectionAvailable)
+      if(connection != null)
       {
-         try
+         if(connection.socket.connected)
          {
-               //Send command to tracker
-               connectionAvailable.write('AT^ST910;'+ command);
+            try
+            {
+                  //Send command to tracker
+                  socket.write('AT^ST910;'+ command);
 
-               //Log data
-               logger.debug('ST940@' + this.getID() + ' (' + connectionAvailable.remoteAddress + ') <- [AT^ST910;' + command + "]");
+                  //Log data
+                  logger.debug('ST940@' + this.getID() + ' (' + connection.remoteAddress + ') <- [AT^ST910;' + command + "]");
 
-               //Command sent, return ture
-               return true;
+                  //Command sent, return ture
+                  return true;
+            }
+            catch(error)
+            {
+                  //Log error
+                  logger.error('Error sending command to tracker #' + this.getID() + " - Error: " + error + " / Command: " + command);
+            }
          }
-         catch(error)
-         {
-               //Log error
-               logger.error('Error sending command to tracker #' + this.getID() + " - Error: " + error + " / Command: " + command);
+         else
+         { 
+            //Log warning
+            logger.debug('ST940@' + this.getID() + " have pending commands, but the connection is no longer valid.");
          }
       }
       else
       {
          //Log warning
-         logger.debug('ST940@' + this.getID() + " have pending commands but it's not available.");
+         logger.debug('ST940@' + this.getID() + " have pending commands but hasn't connected yet.");
       }
 
       //Command not sent, return error
@@ -573,7 +624,7 @@ class ST940 extends Tracker
       }
 
       //Check if tracker configuration matches user configuration (if exists)
-      if(user_config == null || !user_config.status.finished || (user_config.enabled == tracker_config.enabled && user_config.value == tracker_config.value))
+      if(user_config == null || (user_config.enabled == tracker_config.enabled && user_config.value == tracker_config.value) && user_config.status.step != "SUCCESS")
       {
          //Insert configuration on DB if user has not set configuration yet
          this.getDB()
@@ -591,7 +642,7 @@ class ST940 extends Tracker
             logger.error("Error updating configuration retrieved from tracker " + this.getID() + " on database: " + error);
          });
       }
-      else
+      else if(user_config.status.step != "SUCCESS")
       {
          //Log warn
          logger.warn("Configuration '" + tracker_config.name + "' retrieved from tracker " + this.getID() + " is different from user defined configuration.");

@@ -120,6 +120,9 @@ class SMS_Parser extends EventEmitter
          //Execute modem configuration (ENABLE ERROR MESSAGES)
          modem.execute("AT+CMEE=2");
 
+         //Execute modem configuration (ENABLE NETWORK REGISTRATION EVENT)
+         modem.execute("AT+CREG=1");
+
          //Execute modem configuration (REQUEST DELIVERY REPORT)
          modem.execute("AT+CSMP=49,167,0,0");
 
