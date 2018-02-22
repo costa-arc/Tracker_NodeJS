@@ -94,11 +94,11 @@ class ST940 extends Tracker
                      });
                      break;
                      
-               case "TurnOff":
+               case "TempOff":
                   //Create REPORT command
                   this.setPendingCommand("OFF", 
                   {
-                     command: "OFF;" + this.getID() + ";" + this.getConfiguration("TurnOff").value,
+                     command: "OFF;" + this.getID() + ";" + this.getConfiguration("TempOff").value,
                      description: "Solicitando desligamento temporário"
                   });
                   break;
@@ -181,8 +181,8 @@ class ST940 extends Tracker
             }
             else
             {
-               //Log info
-               logger.debug("Tracker ST940@" + this.getID() + " configurations waiting for connection since: " + this.get("lastConfiguration").datetime)
+               //Run method to execute configurations
+               this.applyConfigurations();
             }
          }
          else
@@ -220,38 +220,42 @@ class ST940 extends Tracker
             server: this.getServerName(),
             datetime: new Date()
          };
-   
-         //Update tracker to indicate pending configuration
-         this.getDB()
-            .doc('Tracker/' + this.getID())
-            .update(
-            { 
-                  lastConfiguration: lastConfiguration,
-                  lastUpdate: new Date()
-            })
-            .then((result) => 
-            {
-               //Log info
-               logger.info("Tracker ST910@" + this.getID() + " config progress (" + progress + "%): " + config_description + " -> " + status_description);
-
-               //Update locally last configuration value
-               this.set('lastConfiguration', lastConfiguration);    
                
-               //If config progress is completed (called by confirmConfiguration)
-               if(command_name)
-               {
-                  //Remove command from pending list
-                  delete this.getPendingCommands()[command_name];
+         //If config progress is completed (called by confirmConfiguration)
+         if(command_name)
+         {
+            //Remove command from pending list
+            delete this.getPendingCommands()[command_name];
 
-                  //Call method to execute next pending configuration
-                  this.applyConfigurations();
-               }
-            })
-            .catch(error =>
-            {
-               //Log error
-               logger.error("Error updating configuration progress: " + error);
-            });    
+            //Call method to execute next pending configuration
+            this.applyConfigurations();
+         }
+
+         //If configuration still in progress
+         if(progress < 100)
+         {
+            //Update tracker to indicate pending configuration
+            this.getDB()
+               .doc('Tracker/' + this.getID())
+               .update(
+               { 
+                     lastConfiguration: lastConfiguration,
+                     lastUpdate: new Date()
+               })
+               .then((result) => 
+               {
+                  //Log info
+                  logger.info("Tracker ST910@" + this.getID() + " config progress (" + progress + "%): " + config_description + " -> " + status_description);
+
+                  //Update locally last configuration value
+                  this.set('lastConfiguration', lastConfiguration); 
+               })
+               .catch(error =>
+               {
+                  //Log error
+                  logger.error("Error updating configuration progress: " + error);
+               });   
+         } 
       }
    }
 
@@ -275,14 +279,18 @@ class ST940 extends Tracker
       }
       else if(this.get("lastConfiguration") != null && this.get("lastConfiguration").step == "PENDING")
       {
+         //Update value locally until load from DB
+         this.get("lastConfiguration").step = "SUCCESS";
+
          //Initialize last update result
          var lastConfiguration = 
          {
-             step: "SUCCESS", 
-             description: "Solicitação bem sucedida",
-             status: "Processo finalizado às " + moment().format("HH:mm - DD/MM"),
-             server: this.getServerName(),
-             datetime: new Date()
+            progress: 100,
+            step: "SUCCESS", 
+            description: "Solicitação bem sucedida",
+            status: "Processo finalizado às " + moment().format("HH:mm - DD/MM"),
+            server: this.getServerName(),
+            datetime: new Date()
          }
 
          //Update tracker to indicate configuration finished
@@ -322,12 +330,11 @@ class ST940 extends Tracker
 
    parseData(data)
    {
-      //"ST910;Emergency;696478;500;20180201;12:26:55;-23.076226;-054.206427;000.367;000.00;1;4.1;0;1;02;1865;c57704f358;724;18;-397;1267;255;3;25\r"
+      //"ST910;Emergency;696969;500;20180201;12:26:55;-23.076226;-054.206427;000.367;000.00;1;4.1;0;1;02;1865;c57704f358;724;18;-397;1267;255;3;25\r"
       if(data[0] === "ST910" && (data[1] === 'Emergency' || data[1] === 'Alert' || data[1] === 'Location'))
       {
          //Parse datetime
          var datetime =  moment.utc(data[4] + "-" + data[5], "YYYYMMDD-hh;mm;ss").toDate();
-
          //Parse coordinate
          var coordinates = this.getGeoPoint(parseFloat(data[6]), parseFloat(data[7]));
 
@@ -427,14 +434,12 @@ class ST940 extends Tracker
             //Send ACK command to tracker
             this.sendCommand('ACK;' + this.getID());
          }
-         else if(data[1] === 'Location')
-         {
-            //Get periodic update when active configuration from response
-            this.confirmConfiguration("Location", "1");
+         
+         //Confirm receiving location config
+         this.confirmConfiguration("Location", "1");
 
-            //If location was sent by tracker in response to a FIND command, confirm command execution
-            this.confirmCommand("FIND");
-         }
+         //If location was sent by tracker in response to a FIND command, confirm command execution
+         this.confirmCommand("FIND");
       }
       else if(data[1] === 'Alive')
       {
@@ -511,7 +516,7 @@ class ST940 extends Tracker
             case 'OFF':
 
                //Get periodic update when active configuration from response
-               this.confirmConfiguration("TurnOff", "1", data[4]);
+               this.confirmConfiguration("TempOff", "1", data[4]);
                break;
          }
       }
@@ -625,8 +630,11 @@ class ST940 extends Tracker
       }
 
       //Check if tracker configuration matches user configuration (if exists)
-      if(user_config == null || (user_config.enabled == tracker_config.enabled && user_config.value == tracker_config.value) && user_config.status.step != "SUCCESS")
+      if(user_config == null || (this.configEquals(user_config, tracker_config) && !user_config.status.finished))
       {
+         //Update user configuration
+         user_config.status.finished = true;
+
          //Insert configuration on DB if user has not set configuration yet
          this.getDB()
             .collection('Tracker/' + this.getID() + '/Configurations')
@@ -643,7 +651,7 @@ class ST940 extends Tracker
             logger.error("Error updating configuration retrieved from tracker " + this.getID() + " on database: " + error);
          });
       }
-      else if(user_config.status.step != "SUCCESS")
+      else if(!user_config.status.finished)
       {
          //Log warn
          logger.warn("Configuration '" + tracker_config.name + "' retrieved from tracker " + this.getID() + " is different from user defined configuration.");
@@ -668,7 +676,27 @@ class ST940 extends Tracker
       }
    }
 
-   
+   configEquals(config1, config2)
+   {
+      //Check if both are enabled or disabled
+      if(config1.enabled == config2.enabled)
+      {
+         if(!config1.value)
+         {
+            //Return true if both are null
+            return !config2.value;
+         }
+         else if(config2.value)
+         {
+            //Return true if both have same value
+            return config1.value.trim() === config2.value.trim();
+         }
+      }
+
+      //Otherwise, configs are diferent, return false
+      return false;
+   }
+
    insert_coordinates(tracker_params, coordinate_params, msg_code)
    {
       //Check msg code sent by the tracker

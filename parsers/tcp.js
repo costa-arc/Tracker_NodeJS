@@ -79,12 +79,20 @@ class TCP_Parser extends EventEmitter
             });
         });
 
-        //Start listening for TCP connections
-        this._server.listen(this._tcp_port, () => {  
+         //Set error handler
+         this._server.on("error", error =>
+         {
+            //Log error
+            logger.error('Error opening TCP port: ' + this._tcp_port + " / Error: " + error);
+         });
+
+         //Start listening for TCP connections
+         this._server.listen(this._tcp_port, () => {  
 
             //Log info
             logger.info('TCP server listening to port: ' +  this._tcp_port);
-        });
+         });
+        
     }
     
 }

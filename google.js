@@ -33,6 +33,9 @@ class Google_Services
         googleApiKey: 'AIzaSyBBw803hHB7msBTnZ53YHdDWFPcJACIyCc',
         openCellIdApiKey: '9d604982096e3a'
     });
+    
+    //Set google services debug function
+    admin.firestore.setLogFunction(message => { logger.debug(message); });
 
     //Load Firebase Firestore DB manager and Cloud Messaging
     this._db = admin.firestore();
