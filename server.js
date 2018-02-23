@@ -17,6 +17,7 @@ const SMS_Module = require('./parsers/sms');
 //Import tracker models
 const TK102B = require('./trackers/tk120b');
 const ST940 = require('./trackers/st940');
+const SPOT = require('./trackers/spot');
 
 //Get process params
 const tcp_port = 5001;
@@ -26,17 +27,17 @@ const server_name = process.argv[3];
 //Initialize Google services 
 var google_services = new Google_Services("./credentials.json");
 
+//Initialize tracker array
+var trackers = {};
+
 //Initialize HTTP Parser
-var http_parser = new HTTP_Module();
+var http_parser = new HTTP_Module(server_name, trackers);
 
 //Initialize TCP Parser
 var tcp_parser = new TCP_Module(server_name, tcp_port);
 
 //Initialize SMS Parser
 var sms_parser = new SMS_Module(server_name, com_port);
-
-//Initialize tracker array
-var trackers = {};
 
 //Handle data comming from 
 sms_parser.on('data', (type, data) => 

@@ -19,7 +19,7 @@ winston.add(new winston.transports.Console(
    handleExceptions: true
 }));
 
- winston.add(new winston.transports.File(
+winston.add(new winston.transports.File(
 { 
    filename: '/var/log/tracker_info.log', 
    level: 'info', 
@@ -31,6 +31,7 @@ winston.add(new winston.transports.Console(
 winston.add(new winston.transports.File(
 { 
    filename: '/var/log/tracker_debug.log', 
+   level: 'debug', 
    format: logFormat,
    maxsize: 1000000, 
    maxfiles: 20 

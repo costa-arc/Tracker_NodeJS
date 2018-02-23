@@ -35,7 +35,7 @@ class Google_Services
     });
     
     //Set google services debug function
-    admin.firestore.setLogFunction(message => { logger.debug(message); });
+    //admin.firestore.setLogFunction(message => { logger.debug(message); });
 
     //Load Firebase Firestore DB manager and Cloud Messaging
     this._db = admin.firestore();
@@ -90,6 +90,13 @@ class Google_Services
       //Use override title and content
       params.title = override.title;
       params.content = override.content;
+
+      //If user wants to suppress this notification
+      if(override.suppress)
+      {
+         //Cancel notification by ending this method early
+         return;
+      }
     }
 
     // Create topic structure

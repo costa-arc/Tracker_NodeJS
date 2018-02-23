@@ -178,7 +178,7 @@ class SMS_Parser extends EventEmitter
             //Call method to handle sms
             this.emit('data', 'sms_received',
             { 
-               datetime: moment().format('YYYY/MM/DD_hh_mm_ss_SSS'),
+               datetime: moment(sms.time).format('YYYY_MM_DD_hh_mm_ss_SSS'),
                source: this.formatPhoneNumber(sms.sender), 
                content: sms 
             });

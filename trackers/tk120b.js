@@ -212,7 +212,7 @@ class TK102B extends Tracker
             {
                 step: "SUCCESS", 
                 description: "Configuração bem sucedida",
-                status: "Processo finalizado às " + moment().format("hh:mm - DD/MM"),
+                status: "Processo finalizado às " + moment().format("HH:mm - DD/MM"),
                 server: this.getServerName(),
                 datetime: new Date()
             }
