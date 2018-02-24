@@ -20,8 +20,8 @@ class HTTP_Parser
       //Initialize tracker list
       this._trackers = tracker_array;
 
-      //Initialize an periodic check for modem status (every 1 minute)
-      setInterval(this.periodicCheck.bind(this), 60000, this._trackers);
+      //Initialize an periodic check for modem status (every 3 minutes)
+      setInterval(this.periodicCheck.bind(this), 3*60000, this._trackers);
 
       //Log data
       logger.debug("HTTP parser successfully initialialized.")
