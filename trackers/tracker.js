@@ -243,7 +243,7 @@ class Tracker
                 if(lastCoordinate == null || this.getDistance(coordinate_params.position, lastCoordinate.data().position) > 50)
                 {
                     //Get coordinate ID if available
-                    var coordinate_id = (coordinate_params.id ? coordinate_params.id : moment(new Date()).format('YYYY_MM_DD_hh_mm_ss_SSS'));
+                    var coordinate_id = (coordinate_params.id ? coordinate_params.id.toString() : moment(new Date()).format('YYYY_MM_DD_hh_mm_ss_SSS'));
                     
                     //Log data
                     logger.debug("Requesting reverse geocoding", coordinate_params.position);

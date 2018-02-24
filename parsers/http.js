@@ -43,21 +43,21 @@ class HTTP_Parser
 
    checkSPOT(tracker)
    {
-      //Initialize request start date variable
-      var request = 'https://api.findmespot.com/spot-main-web/consumer/rest-api/2.0/public/feed/' + tracker.get('identification') + '/message.xml';
-
-      //Check if tracker have previous coordinate available
-      if(tracker.get('lastCoordinate'))
-      {
-         //Request coordinates only after this moment
-         request += "?startDate=" + moment(tracker.get('lastCoordinate').datetime).utc().add(1, 'second').format('YYYY-MM-DDTHH:mm:ss-0000');//2018-02-03T00:00:00-0000"
-      }
-
       //Check if tracker is not currently being updated
       if(!tracker.updateInProgress)
-      {
-         //Flag update progress
-         tracker.updateInProgress = true;
+      {            
+        //Initialize request start date variable
+        var request = 'https://api.findmespot.com/spot-main-web/consumer/rest-api/2.0/public/feed/' + tracker.get('identification') + '/message.json';
+
+        //Check if tracker have previous coordinate available
+        if(tracker.get('lastCoordinate'))
+        {
+            //Request coordinates only after this moment
+            request += "?startDate=" + moment(tracker.get('lastCoordinate').datetime).utc().add(1, 'second').format('YYYY-MM-DDTHH:mm:ss-0000');//2018-02-03T00:00:00-0000"
+        }
+       
+        //Flag update progress
+        tracker.updateInProgress = true;
 
          //Perform request on SPOT TRACE shared data
          https.get(request, function(resp) 
@@ -65,81 +65,89 @@ class HTTP_Parser
             //On request error
             resp.on('error', function(err) 
             {
-               //Log error
-               logger.error("Failed to request spot trace XML feed: " + err);
-               
-               //Inform error to tracker
-               tracker.configError();
+                //Flag update finished
+                tracker.updateInProgress = false;
+                
+                //Log error
+                logger.error("Failed to request spot trace XML feed: " + err);
+                
+                //Inform error to tracker
+                tracker.configError();
             });
 
             //Concatenate request data
             resp.pipe(concat(function(buffer) 
             {
-               //Parse resulting buffer
-               parser.parseString(buffer.toString(), function(err, result) 
-               {
-                    try 
-                    {
-                        //Error parsing XML
-                        if(err)
-                        {
-                            //Throw error
-                            throw err;
-                        }
-                        else 
-                        {
-                            //Check if result is an error message
-                            if(result.response.errors)
-                            {  
-                                //Throw error description
-                                throw result.response.errors[0].error[0].description[0];
-                            }
-                            else if(!result.response.feedMessageResponse)
-                            {
-                                //XML can't be parsed, throw error
-                                throw "Unknown XML structure";
-                            }
-                            else
-                            {
-                                //Get how many results returned from query
-                                var total_results = parseInt(result.response.feedMessageResponse[0].totalCount[0]);
+                try 
+                {
+                    //Parse response
+                    var result = JSON.parse(buffer.toString())
 
-                                //Finished parsing data
-                                logger.info("Data available from tracker SPOT@" + tracker.get('name') + " XML feed");
-
-                                //For each result in feed
-                                result.response.feedMessageResponse[0].messages[0].message.reverse().forEach(function(message,index) 
-                                {
-                                    //Parse data from message
-                                    tracker.parseData(message, index, result.response.feedMessageResponse[0].messages[0].message.length);
-                                });
-
-                                //Remove flag after estimated process time
-                                setTimeout(() => { tracker.updateInProgress = false;}, total_results*1500);
-                            }
-                        } 
+                    //Check if result is an error message
+                    if(result.response.errors)
+                    {  
+                        //Throw error description
+                        throw result.response.errors.error.description;
                     }
-                    catch (error) 
+                    else if(!result.response.feedMessageResponse)
                     {
-                        //Check if it is an empty result request
-                        if(error.includes('No displayable messages'))
-                        {
-                            //Log data
-                            logger.debug('No updates on tracker SPOT@' + tracker.get('name'));
+                        //XML can't be parsed, throw error
+                        throw "Unknown XML structure";
+                    }
+                    else
+                    {
+                        //Get how many results returned from query
+                        var total_results = result.response.feedMessageResponse.totalCount;
 
-                            //Flag update finished
-                            tracker.updateInProgress = false;
+                        //Get result list
+                        var response = result.response.feedMessageResponse.messages.message;
+
+                        //If single result from query
+                        if(total_results == 1)
+                        {
+                            //Parse single message
+                            tracker.parseData(response, 0, total_results);
+    
+                            //Finished parsing data
+                            logger.info("Data available from tracker SPOT@" + tracker.get('name') + " XML feed");
                         }
                         else
                         {
-                            //Log error
-                            logger.error("Unexpected response in XML feed from " + tracker.name + ": " + error, result);
+                            //For each result in feed
+                            response.reverse().forEach(function(message,index) 
+                            {
+                                //Parse data from message
+                                tracker.parseData(message, index, total_results);
+                            });
 
-                            //Inform error to tracker
-                            tracker.configError();
+                            //Finished parsing data
+                            logger.info("Data available (" + total_results + " results) from tracker SPOT@" + tracker.get('name') + " XML feed");
                         }
+
+                        //Remove flag after estimated process time
+                        setTimeout(() => { tracker.updateInProgress = false;}, total_results*1500);
                     }
-                });
+                } 
+                catch (error) 
+                {
+                    //Flag update finished
+                    tracker.updateInProgress = false;
+                    
+                    //Check if it is an empty result request
+                    if(typeof error == 'string' && error.includes('No displayable messages'))
+                    {
+                        //Log data
+                        logger.debug('No updates on tracker SPOT@' + tracker.get('name'));
+                    }
+                    else
+                    {
+                        //Log error
+                        logger.error("Unexpected response in XML feed from " + tracker.name + ": " + error, result);
+
+                        //Inform error to tracker
+                        tracker.configError();
+                    }
+                }
             }));
          });
       }

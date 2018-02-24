@@ -58,16 +58,16 @@ class SPOT extends Tracker
    parseData(message, current, total)
    {
       //Create coordinate object
-      var coordinates = this.getGeoPoint(parseFloat(message['latitude'][0]), parseFloat(message['longitude'][0]));
+      var coordinates = this.getGeoPoint(parseFloat(message.latitude), parseFloat(message.longitude));
 
       //Parse datetime
-      var datetime = moment.utc(message['dateTime'][0], "YYYY-MM-DDThh:mm:ss").toDate();
+      var datetime = moment.utc(message.dateTime, "YYYY-MM-DDThh:mm:ss").toDate();
 
       //Parse speed
-      var speed = (message['messageType'][0] === ("NEWMOVEMENT") ? "Em movimento" : "Parado");
+      var speed = (message.messageType === ("NEWMOVEMENT") ? "Em movimento" : "Parado");
 
       //Parse battery level
-      var batteryLevel = (message["batteryState"][0] === "GOOD" ? "OK" : "Baixo");
+      var batteryLevel = (message.batteryState === "GOOD" ? "OK" : "Baixo");
 
       //Define tracker params to be updated
       var tracker_params = 
@@ -86,7 +86,7 @@ class SPOT extends Tracker
       //Define coordinates params to be inserted/updated
       var coordinate_params = 
       {
-         id: message["id"][0],
+         id: message.id,
          datetime: datetime,
          signalLevel: "100%",
          batteryLevel: batteryLevel,
@@ -107,8 +107,8 @@ class SPOT extends Tracker
             tracker_params.lastConfiguration = 
             {
                step: "PENDING",
-               description: "Buscando informações",
-               status: "Obtendo dados do rastreador",
+               description: "Obtendo dados do rastreador",
+               status: "Atualizando histórico de coordenadas",
                pending: total,
                progress: progress,
                server: this.getServerName(),
@@ -131,7 +131,7 @@ class SPOT extends Tracker
       }
 
       //Insert coordinates (with delay only if multiple coordinates are being inserted)
-      setTimeout(this.insert_coordinates.bind(this), current*1000, tracker_params, coordinate_params, message['messageType'][0]);
+      setTimeout(this.insert_coordinates.bind(this), current*1000, tracker_params, coordinate_params, message.messageType, message.batteryState === "LOW");
    }
 
    configError()
@@ -162,12 +162,9 @@ class SPOT extends Tracker
 
          });
       }
-      
-      //Flag indicating update operation finished
-      this.updateInProgress = false;
    }
 
-   insert_coordinates(tracker_params, coordinate_params, message_type)
+   insert_coordinates(tracker_params, coordinate_params, message_type, low_battery)
    {
       //Check if tracker is still in initial configuration mode
       if(this.get('lastConfiguration') == null || this.get('lastConfiguration').step != "SUCCESS")
@@ -175,34 +172,44 @@ class SPOT extends Tracker
          //Insert coordinates on DB and build move alert notification
          super.insert_coordinates(tracker_params, coordinate_params, { suppress: true });
       }
-      else if(message_type.startsWith('move!'))
+      else if(message_type == 'NEWMOVEMENT')
       {
          //Insert coordinates on DB and build move alert notification
          super.insert_coordinates(tracker_params, coordinate_params, 
          {
-               topic: 'Notify_MoveOut',
-               title: 'Alerta de evasão',
-               content: 'Movimentação além do limite determinado.'
+            topic: 'Notify_Functioning',
+            title: 'Alerta de movimentação',
+            content: (low_battery ? '(Atenção: Nível baixo de bateria)' : 'Rastreador detectou movimentação')
          });
       }
-      else if(message_type.startsWith("speed!"))
+      else if(message_type == 'STOP')
+      {
+         //Insert coordinates on DB and build move alert notification
+         super.insert_coordinates(tracker_params, coordinate_params, 
+         {
+            topic: 'Notify_Stopped',
+            title: 'Notificação de permanência',
+            content: (low_battery ? '(Atenção: Nível baixo de bateria)' : 'Rastreador não detectou movimentação.')
+         });
+      }
+      else if(message_type == 'STATUS')
       {
          //Insert coordinates on DB and build speed alert notification
          super.insert_coordinates(tracker_params, coordinate_params, 
          {
-               topic: 'Notify_OverSpeed',
-               title: 'Alerta de velocidade',
-               content: 'Velocidade acima do limite determinado.'
+               topic: 'Notify_Functioning',
+               title: 'Notificação de funcionamento',
+               content: (low_battery ? '(Atenção: Nível baixo de bateria)' : 'Rastreador funcionando corretamente.')
          });
       }
-      else if(message_type.startsWith("shock!"))
+      else if(message_type == 'UNLIMITED-TRACK' && low_battery)
       {
-         //Insert coordinates on DB and build shock alert notification
+         //Insert coordinates on DB and build speed alert notification
          super.insert_coordinates(tracker_params, coordinate_params, 
          {
-               topic: 'Notify_Shock',
-               title: 'Alerta de vibração',
-               content: 'Vibração detectada pelo dispositivo.'
+               topic: 'Notify_LowBattery',
+               title: 'Alerta de bateria fraca',
+               content: 'Bateria do rastreador em nível baixo'
          });
       }
       else
