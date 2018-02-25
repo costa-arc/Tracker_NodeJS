@@ -34,8 +34,12 @@ winston.add(new winston.transports.File(
    level: 'debug', 
    format: logFormat,
    maxsize: 1000000, 
-   maxfiles: 20 
+   maxfiles: 20, 
+   handleExceptions: true
 }));
+
+//Do not exit on error
+winston.exitOnError = false;
 
 //Export winston logger
 module.exports = winston;
