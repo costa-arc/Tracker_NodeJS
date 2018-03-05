@@ -238,9 +238,12 @@ class Tracker
             {
                 //Get result from query
                 var lastCoordinate = querySnapshot.docs[0];
-                
-                //If no coordinates available or the distance is less than 50 meters from current position
-                if(lastCoordinate == null || this.getDistance(coordinate_params.position, lastCoordinate.data().position) > 50)
+
+                //Get coordinate type (GPS/GSM)
+                var gsm_coordinate = (tracker_params.lastCoordinate.type == 'GSM');
+
+                //If no coordinates available or the distance is less than 50 meters from current position (if GSM coordinate, adopt 1000 meters range)
+                if(lastCoordinate == null || this.getDistance(coordinate_params.position, lastCoordinate.data().position) > (gsm_coordinate ? 1000 : 50))
                 {
                     //Get coordinate ID if available
                     var coordinate_id = (coordinate_params.id ? coordinate_params.id.toString() : moment(new Date()).format('YYYY_MM_DD_hh_mm_ss_SSS'));
@@ -267,7 +270,7 @@ class Tracker
                         //Send notification to users subscribed on this topic
                         self.sendNotification("Notify_Movement", {
                             title: "Alerta de movimentação",
-                            content: coordinate_params.address,
+                            content: (gsm_coordinate ? "(Sinal de GPS indisponível)" : coordinate_params.address),
                             coordinates: coordinate_params.position.latitude + "," + coordinate_params.position.longitude,
                             datetime: Date.now().toString()
                         }, notification);
@@ -289,7 +292,7 @@ class Tracker
                         //Send notification to users subscribed on this topic
                         self.sendNotification("Notify_Movement", {
                             title: "Alerta de movimentação",
-                            content: "Coordenadas: " + coordinate_params.position.latitude + "," + coordinate_params.position.longitude,
+                            content: (gsm_coordinate ? "(Sinal de GPS indisponível)" : "Coordenadas: " + coordinate_params.position.latitude + "," + coordinate_params.position.longitude),
                             coordinates: coordinate_params.position.latitude + "," + coordinate_params.position.longitude,
                             datetime: Date.now().toString()
                         }, notification);
@@ -315,7 +318,7 @@ class Tracker
                     //Send notification to users subscribed on this topic
                     self.sendNotification("Notify_Stopped", {
                         title: "Alerta de permanência",
-                        content: "Rastreador permanece na mesma posição.",
+                        content: (gsm_coordinate ? "(Sinal de GPS indisponível)" : "Rastreador permanece na mesma posição."),
                         coordinates: coordinate_params.position.latitude + "," + coordinate_params.position.longitude,
                         datetime: Date.now().toString()
                     }, notification);

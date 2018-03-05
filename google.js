@@ -89,7 +89,13 @@ class Google_Services
 
       //Use override title and content
       params.title = override.title;
-      params.content = override.content;
+
+      //If content is not warning about GPS unavailable
+      if(!params.content.includes("GPS indisponível"))
+      {
+         //Override notification content
+         params.content = override.content;
+      }
 
       //If user wants to suppress this notification
       if(override.suppress)
