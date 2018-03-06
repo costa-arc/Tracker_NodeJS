@@ -21,21 +21,21 @@ winston.add(new winston.transports.Console(
 
 winston.add(new winston.transports.File(
 { 
-   filename: '/var/log/tracker_info.log', 
+   filename: 'info.log', 
    level: 'info', 
    format: logFormat,
    maxsize: 5000000, 
-   maxfiles: 10 
+   maxfiles: 10, 
+   handleExceptions: true
 }));
 
 winston.add(new winston.transports.File(
 { 
-   filename: '/var/log/tracker_debug.log', 
+   filename: 'debug.log', 
    level: 'debug', 
    format: logFormat,
    maxsize: 1000000, 
-   maxfiles: 20, 
-   handleExceptions: true
+   maxfiles: 20
 }));
 
 //Do not exit on error
