@@ -1,6 +1,9 @@
 //Import log manager
 var winston = require('winston');
 
+//Import path manager
+var path = require('path');
+
 //Define application log format
 const logFormat = winston.format.combine
 (
@@ -17,25 +20,6 @@ winston.add(new winston.transports.Console(
    level: 'debug',
    format: winston.format.combine(winston.format.colorize(), logFormat),
    handleExceptions: true
-}));
-
-winston.add(new winston.transports.File(
-{ 
-   filename: 'info.log', 
-   level: 'info', 
-   format: logFormat,
-   maxsize: 5000000, 
-   maxfiles: 10, 
-   handleExceptions: true
-}));
-
-winston.add(new winston.transports.File(
-{ 
-   filename: 'debug.log', 
-   level: 'debug', 
-   format: logFormat,
-   maxsize: 1000000, 
-   maxfiles: 20
 }));
 
 //Do not exit on error
