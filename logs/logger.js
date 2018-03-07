@@ -19,7 +19,8 @@ winston.add(new winston.transports.Console(
 { 
    level: 'debug',
    format: winston.format.combine(winston.format.colorize(), logFormat),
-   handleExceptions: true
+   handleExceptions: true,
+   stderrLevels: ["warn", "error"]
 }));
 
 //Do not exit on error
