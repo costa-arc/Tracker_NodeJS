@@ -242,8 +242,8 @@ class Tracker
                 //Get coordinate type (GPS/GSM)
                 var gsm_coordinate = (tracker_params.lastCoordinate.type == 'GSM');
 
-                //If no coordinates available or the distance is less than 50 meters from current position (if GSM coordinate, adopt 1000 meters range)
-                if(lastCoordinate == null || this.getDistance(coordinate_params.position, lastCoordinate.data().position) > (gsm_coordinate ? 1000 : 50))
+                //If no coordinates available or the distance is less than 50 meters from current position (if GSM coordinate, adopt 2000 meters range)
+                if(lastCoordinate == null || this.getDistance(coordinate_params.position, lastCoordinate.data().position) > (gsm_coordinate ? 2000 : 50))
                 {
                     //Get coordinate ID if available
                     var coordinate_id = (coordinate_params.id ? coordinate_params.id.toString() : moment(new Date()).format('YYYY_MM_DD_hh_mm_ss_SSS'));
