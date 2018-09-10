@@ -43,7 +43,7 @@ class TCP_Parser extends EventEmitter
                 logger.debug("TCP (" + conn.remoteAddress + ') -> [' + data.replace(/\r?\n|\r/, '') + ']');
 
                 //Check if this is COBAN GPRS protocol
-                if(content.startsWith('##'))
+                if(data.startsWith('##'))
                 {
                     //Split data using ';' separator
                     var content = data.split(',');
@@ -55,7 +55,7 @@ class TCP_Parser extends EventEmitter
                         content: content
                     });
                 }
-                else if(content.includes("ST910"))
+                else if(data.includes("ST910"))
                 {
                     //Split data using ';' separator
                     var content = data.split(';');
