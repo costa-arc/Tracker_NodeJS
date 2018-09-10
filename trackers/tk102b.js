@@ -335,7 +335,7 @@ class TK102B extends Tracker
             var sms = data.content;
 
             //If it is a delivery confirmation 
-            if(sms.text.indexOf('entregue') > 0)
+            if(!sms.text || sms.text.indexOf('entregue') > 0)
             {
                 //Just log data (delivery report is handled it's own method)
                 logger.debug('Received SMS delivery report from ' + this.get('name'));

@@ -10,7 +10,7 @@
             "console": "integratedTerminal",
             "name": "Tracker",
             "program": "${workspaceFolder}\\server.js",
-            "args": [ "COM4", "TrackerBIP" ]
+            "args": ["COM9", "TrackerBIP" ]
         }
     ]
 }

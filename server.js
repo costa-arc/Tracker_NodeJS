@@ -15,7 +15,8 @@ const TCP_Module = require('./parsers/tcp');
 const SMS_Module = require('./parsers/sms');
 
 //Import tracker models
-const TK102B = require('./trackers/tk120b');
+const TK1102B = require('./trackers/tk1102b');
+const TK102B = require('./trackers/tk102b');
 const ST940 = require('./trackers/st940');
 const SPOT = require('./trackers/spot');
 
@@ -77,7 +78,7 @@ sms_parser.on('data', (type, data) =>
 });
 
 //Handle data comming from 
-tcp_parser.on('data', (tcp_socket, data) => 
+tcp_parser.on('data', (model, tcp_socket, data) => 
 {
   //Check the source from data is a known tracker
   if(trackers[data.source])
@@ -99,41 +100,49 @@ tcp_parser.on('data', (tcp_socket, data) =>
         //if there is no tracker with this ID
         if (!docSnapshot.exists) 
         {
-            //Log info
-            logger.info("New tracker (ST940@" + data.source + ") detected, requesting current configuration.")
-            
-            //Initialize tracker array
-            var tracker_params = {};
+            //If SUNTECH MODEL
+            if(model == "ST940")
+            {
+              //Log info
+              logger.info("New tracker (ST940@" + data.source + ") detected, requesting current configuration.")
+              
+              //Initialize tracker array
+              var tracker_params = {};
 
-            //Else, create an entry on DB
-            tracker_params.name = "ST940 - ID(" + data.source + ")";
-            tracker_params.model = "st940";
-            tracker_params.description = "Adicionado automaticamente";
-            tracker_params.identification = data.source;
-            tracker_params.lastUpdate = new Date();
+              //Else, create an entry on DB
+              tracker_params.name = "ST940 - ID(" + data.source + ")";
+              tracker_params.model = "st940";
+              tracker_params.description = "Adicionado automaticamente";
+              tracker_params.identification = data.source;
+              tracker_params.lastUpdate = new Date();
 
-            //Choose a random color to new tracker
-            tracker_params.backgroundColor = ['#99ff0000', '#99ffe600', '#99049f1e', '#99009dff', '#9900ffee'][Math.floor((Math.random() * 4) + 1)];
-            
-            //Create a new tracker object
-            trackers[data.source] = new ST940(data.source, tcp_parser, google_services);
+              //Choose a random color to new tracker
+              tracker_params.backgroundColor = ['#99ff0000', '#99ffe600', '#99049f1e', '#99009dff', '#9900ffee'][Math.floor((Math.random() * 4) + 1)];
+              
+              //Create a new tracker object
+              trackers[data.source] = new ST940(data.source, tcp_parser, google_services);
 
-            //Insert new tracker
-            google_services.getDB()
-              .collection('Tracker')
-              .doc(data.source)
-              .set(tracker_params, { merge: true })
-              .then(() => 
-              {          
-                  //Save current data on tracker (untill loading)
-                  trackers[data.source].loadData(tracker_params);       
+              //Insert new tracker
+              google_services.getDB()
+                .collection('Tracker')
+                .doc(data.source)
+                .set(tracker_params, { merge: true })
+                .then(() => 
+                {          
+                    //Save current data on tracker (untill loading)
+                    trackers[data.source].loadData(tracker_params);       
 
-                  //Add tcp connection to tracker
-                  trackers[data.source].setConnection(tcp_socket);
+                    //Add tcp connection to tracker
+                    trackers[data.source].setConnection(tcp_socket);
 
-                  //Call method to parse data
-                  trackers[data.source].parseData(data.content);
-              });
+                    //Call method to parse data
+                    trackers[data.source].parseData(data.content);
+                });
+            }
+            else if(model == "TK1102B")
+            {
+
+            }
           }
       });
   }
@@ -174,6 +183,11 @@ function monitorTrackers()
               case 'tk102b': 
                 //Create an instance of a TK102B tracker model
                 trackers[id] = new TK102B(id, sms_parser, google_services);
+                break;
+
+              case 'tk1102b':
+                //Create an instance of a TK1102B tracker model
+                trackers[id] = new TK1102B(id, sms_parser, google_services);
                 break;
 
               case 'st940':

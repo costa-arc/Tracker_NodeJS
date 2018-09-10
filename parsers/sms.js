@@ -259,7 +259,7 @@ class SMS_Parser extends EventEmitter
         }
 
         //Result success
-        callback(true, this._sms_sent[reference])       
+        callback(true, this._sms_sent[reference]);
       }
       else
       {

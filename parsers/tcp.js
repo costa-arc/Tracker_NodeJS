@@ -42,15 +42,26 @@ class TCP_Parser extends EventEmitter
                 //Log data received
                 logger.debug("TCP (" + conn.remoteAddress + ') -> [' + data.replace(/\r?\n|\r/, '') + ']');
 
-                //Split data using ';' separator
-                var content = data.split(';');
-
-                //Check if data received is from a ST910/ST940 model 
-                //TODO: PRESET message
-                if(content[2])
+                //Check if this is COBAN GPRS protocol
+                if(content.startsWith('##'))
                 {
+                    //Split data using ';' separator
+                    var content = data.split(',');
+
                     //Call method to handle tcp data
-                    this.emit('data', conn,
+                    this.emit('data', 'TK1102B', conn,
+                    { 
+                        source: content[1].trim(), 
+                        content: content
+                    });
+                }
+                else if(content.includes("ST910"))
+                {
+                    //Split data using ';' separator
+                    var content = data.split(';');
+
+                    //Call method to handle tcp data
+                    this.emit('data', 'ST910', conn,
                     { 
                         source: (content[1] == 'RES' ? content[3].trim() : content[2].trim()), 
                         content: content
