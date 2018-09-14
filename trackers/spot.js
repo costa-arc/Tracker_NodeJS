@@ -36,7 +36,7 @@ class SPOT extends Tracker
          };
 
          //Update tracker to indicate pending configuration
-         this.getDB().doc('Tracker/' + this.getID()).update(
+         this.getDB().doc('Trackers/' + this.getID()).update(
          {
             lastConfiguration:  lastConfiguration,
             lastUpdate: new Date()
@@ -150,7 +150,7 @@ class SPOT extends Tracker
          };
 
          //Update tracker to indicate pending configuration
-         this.getDB().doc('Tracker/' + this.getID()).update(
+         this.getDB().doc('Trackers/' + this.getID()).update(
          {
             lastConfiguration:  lastConfiguration,
             lastUpdate: new Date()

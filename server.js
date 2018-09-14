@@ -15,7 +15,6 @@ const TCP_Module = require('./parsers/tcp');
 const SMS_Module = require('./parsers/sms');
 
 //Import tracker models
-const TK1102B = require('./trackers/tk1102b');
 const TK102B = require('./trackers/tk102b');
 const ST940 = require('./trackers/st940');
 const SPOT = require('./trackers/spot');
@@ -93,7 +92,7 @@ tcp_parser.on('data', (model, tcp_socket, data) =>
   {
     //Check on DB if there is a tracker with this ID
     google_services.getDB()
-      .doc("Tracker/" + data.source)
+      .doc("Trackers/" + data.source)
       .get()
       .then(docSnapshot => 
       {
@@ -124,7 +123,7 @@ tcp_parser.on('data', (model, tcp_socket, data) =>
 
               //Insert new tracker
               google_services.getDB()
-                .collection('Tracker')
+                .collection('Trackers')
                 .doc(data.source)
                 .set(tracker_params, { merge: true })
                 .then(() => 
@@ -139,7 +138,7 @@ tcp_parser.on('data', (model, tcp_socket, data) =>
                     trackers[data.source].parseData(data.content);
                 });
             }
-            else if(model == "TK1102B")
+            else if(model == "TK102B")
             {
 
             }
@@ -159,7 +158,7 @@ function monitorTrackers()
 
   //Initialize listener
   google_services.getDB()
-    .collection("Tracker")
+    .collection("Trackers")
     .onSnapshot(querySnapshot => 
     {
       //For each tracker load from snapshot

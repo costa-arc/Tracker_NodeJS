@@ -136,7 +136,7 @@ class Tracker
     {
         //Load configuration from trackers
         this.getDB()
-        .collection("Tracker/" + this.getID() + "/Configurations")
+        .collection("Trackers/" + this.getID() + "/Configurations")
         .orderBy("priority", 'desc')
         .get()
         .then(result =>
@@ -222,14 +222,14 @@ class Tracker
 
         //Update tracker
         this.getDB()
-        .collection('Tracker')
+        .collection('Trackers')
         .doc(this.getID())
         .set(tracker_params, { merge: true })
         .then(() => 
         {
             //Get latest coordinate from this tracker
             this.getDB()
-            .collection('Tracker/' + this.getID() + '/Coordinates')
+            .collection('Trackers/' + this.getID() + '/Coordinates')
             .orderBy('datetime', 'desc')
             .where('datetime', '<=', coordinate_params.datetime)
             .limit(1)
@@ -242,7 +242,7 @@ class Tracker
                 //Get coordinate type (GPS/GSM)
                 var gsm_coordinate = (tracker_params.lastCoordinate.type == 'GSM');
 
-                //If no coordinates available or the distance is less than 50 meters from current position (if GSM coordinate, adopt 2000 meters range)
+                //If no coordinates available or the distance is less than 50 meters from current position (if GSM coordinate, use 2000 meters range)
                 if(lastCoordinate == null || this.getDistance(coordinate_params.position, lastCoordinate.data().position) > (gsm_coordinate ? 2000 : 50))
                 {
                     //Get coordinate ID if available
@@ -263,7 +263,7 @@ class Tracker
 
                         //Insert coordinates with geocoded address
                         self.getDB()
-                            .collection('Tracker/' + self.getID() + "/Coordinates")
+                            .collection('Trackers/' + self.getID() + "/Coordinates")
                             .doc(coordinate_id)
                             .set(coordinate_params)
                         
@@ -285,7 +285,7 @@ class Tracker
 
                         //Insert coordinates without geocoded address
                         self.getDB()
-                            .collection('Tracker/' + self.getID() + "/Coordinates")
+                            .collection('Trackers/' + self.getID() + "/Coordinates")
                             .doc(coordinate_id)
                             .set(coordinate_params)
 
@@ -311,7 +311,7 @@ class Tracker
 
                     //Current coordinates is too close from previous, just update last coordinate
                     self.getDB()
-                        .collection('Tracker/' + self.getID() + "/Coordinates")
+                        .collection('Trackers/' + self.getID() + "/Coordinates")
                         .doc(lastCoordinate.id)
                         .update(coordinate_params);
 

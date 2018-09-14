@@ -31,7 +31,7 @@ class TK102B extends Tracker
             if(this.getPendingConfigs().length > 0)
             {    
                 //Update tracker to indicate pending configuration
-                this.getDB().doc('Tracker/' + this.getID()).update('lastConfiguration', 
+                this.getDB().doc('Trackers/' + this.getID()).update('lastConfiguration', 
                 {
                     step: "PENDING",
                     description: "Preparando configurações para envio",
@@ -146,7 +146,7 @@ class TK102B extends Tracker
                 {
                     //Save SMS sent on Firestore DB
                     this.getDB()
-                    .collection("Tracker/" + this.get('identification') + "/SMS_Sent")
+                    .collection("Trackers/" + this.get('identification') + "/SMS_Sent")
                     .doc(result.id)
                     .set(
                     {
@@ -200,7 +200,7 @@ class TK102B extends Tracker
 
                 //Save data on firestore DB
                 this.getDB()
-                    .collection("Tracker/" + this.getID() + "/Configurations")
+                    .collection("Trackers/" + this.getID() + "/Configurations")
                     .doc(configuration.name)
                     .set(configuration);
             });
@@ -235,7 +235,7 @@ class TK102B extends Tracker
             
             //Update tracker to indicate configuration finished
             this.getDB()
-                .collection('Tracker')
+                .collection('Trackers')
                 .doc(this.getID())
                 .set(
                 { 
@@ -315,7 +315,7 @@ class TK102B extends Tracker
 
             //Update configuration status on firestore DB
             this.getDB()
-                .collection("Tracker/" + this.getID() + "/Configurations")
+                .collection("Trackers/" + this.getID() + "/Configurations")
                 .doc(config.name)
                 .set(config)
                 .then(() =>
@@ -350,7 +350,7 @@ class TK102B extends Tracker
 
                 //Save message on firestore DB
                 this.getDB()
-                    .collection("Tracker/" + this.getID() + "/SMS_Received")
+                    .collection("Trackers/" + this.getID() + "/SMS_Received")
                     .doc(data.datetime)
                     .set(
                     {
@@ -455,7 +455,7 @@ class TK102B extends Tracker
                     var battery_level = parseInt(sms_text.substring(index, sms_text.substring(index).indexOf('%') + index)) + "%";
 
                     //Update value on firestore DB
-                    this.getDB().doc("Tracker/" + this.getID()).update({
+                    this.getDB().doc("Trackers/" + this.getID()).update({
                         signalLevel: signal_level,
                         batteryLevel: battery_level
                     });
@@ -645,7 +645,7 @@ class TK102B extends Tracker
 
                     //Update configuration status
                     this.getDB()
-                        .collection("Tracker/" + this.getID() + "/Configurations")
+                        .collection("Trackers/" + this.getID() + "/Configurations")
                         .doc(configuration.name)
                         .update(configuration);
                 }
@@ -662,7 +662,7 @@ class TK102B extends Tracker
 
                 //Update data on firestore DB
                 this.getDB()
-                    .collection('Tracker/' + this.getID() + '/SMS_Sent')
+                    .collection('Trackers/' + this.getID() + '/SMS_Sent')
                     .doc(sms.id)
                     .update(
                     {
@@ -691,7 +691,7 @@ class TK102B extends Tracker
             var progress = ((pending - this.getPendingConfigs().length + config_progress) * 100 / pending).toFixed(0);
     
             //Update tracker to indicate pending configuration
-            this.getDB().doc('Tracker/' + this.getID()).update(
+            this.getDB().doc('Trackers/' + this.getID()).update(
             { 
                 lastConfiguration: 
                 {
@@ -804,7 +804,7 @@ class TK102B extends Tracker
          {
             //Save SMS sent on Firestore DB
             this.getDB()
-            .collection("Tracker/" + this.get('identification') + "/SMS_Sent")
+            .collection("Trackers/" + this.get('identification') + "/SMS_Sent")
             .doc(result.id)
             .set(
             {

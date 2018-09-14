@@ -49,7 +49,7 @@ class TCP_Parser extends EventEmitter
                     var content = data.split(',');
 
                     //Call method to handle tcp data
-                    this.emit('data', 'TK1102B', conn,
+                    this.emit('data', 'TK102B', conn,
                     { 
                         source: content[1].trim(), 
                         content: content

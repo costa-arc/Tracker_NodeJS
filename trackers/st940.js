@@ -162,7 +162,7 @@ class ST940 extends Tracker
                };
 
                //Update tracker to indicate pending configuration
-               this.getDB().doc('Tracker/' + this.getID()).update(
+               this.getDB().doc('Trackers/' + this.getID()).update(
                {
                   lastConfiguration:  lastConfiguration,
                   lastUpdate: new Date()
@@ -236,7 +236,7 @@ class ST940 extends Tracker
          {
             //Update tracker to indicate pending configuration
             this.getDB()
-               .doc('Tracker/' + this.getID())
+               .doc('Trackers/' + this.getID())
                .update(
                { 
                      lastConfiguration: lastConfiguration,
@@ -578,7 +578,7 @@ class ST940 extends Tracker
    {
       //Insert configuration on DB if user has not set configuration yet
       this.getDB()
-         .collection('Tracker/' + this.getID() + '/Configurations')
+         .collection('Trackers/' + this.getID() + '/Configurations')
          .doc("RequestConfig")
          .set({
             name: "RequestConfig", 
@@ -637,7 +637,7 @@ class ST940 extends Tracker
 
          //Insert configuration on DB if user has not set configuration yet
          this.getDB()
-            .collection('Tracker/' + this.getID() + '/Configurations')
+            .collection('Trackers/' + this.getID() + '/Configurations')
             .doc(tracker_config.name)
             .set(tracker_config, {merge: true})
          .then(() => 
