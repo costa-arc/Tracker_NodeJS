@@ -67,6 +67,18 @@ class TCP_Parser extends EventEmitter
                         content: content
                     });
                 }
+                else if(data.includes("CLIENT_AUTH"))
+                {
+                    //Split data using ';' separator
+                    var content = data.split('_');
+
+                    //Call method to handle tcp data
+                    this.emit('data', 'CLIENT', conn,
+                    { 
+                        source: content[2], 
+                        content: content
+                    });
+                }
                 else if(data.length > 5)
                 {
                     //Log warning

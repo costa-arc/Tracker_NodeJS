@@ -101,7 +101,7 @@ class SMS_Parser extends EventEmitter
          modem.on('command', function(command) 
          {
             //Log command
-            logger.debug("Modem <- [" + command + "] ");
+            logger.debug("Modem <- [" + command + "] / Memmory Usage -> " + process.memoryUsage().rss);
          });
 
          //Execute modem configuration (RESET MODEM)
@@ -234,11 +234,11 @@ class SMS_Parser extends EventEmitter
       });
   }
 
-  send_sms(tracker, text, callback)
+  send_sms(phoneNumber, text, callback)
   {
     //Send command to request current position
     this._modem.sms({
-      receiver: tracker.get('identification'),
+      receiver: phoneNumber,
       text: text,
       encoding:'16bit'
     }, 
@@ -255,7 +255,7 @@ class SMS_Parser extends EventEmitter
           text: text, 
           reference: reference,
           id: sms_id,
-          tracker_id: tracker.get('identification')
+          tracker_id: phoneNumber
         }
 
         //Result success
@@ -264,7 +264,7 @@ class SMS_Parser extends EventEmitter
       else
       {
         //Result error
-        callback(false, 'Error sending sms to tracker ' + tracker.get('name') + ': ' + result);
+        callback(false, 'Error sending sms to ' + phoneNumber + ': ' + result);
       }
     });
   }
@@ -284,7 +284,10 @@ class SMS_Parser extends EventEmitter
          modem.execute("AT+CSQ");
 
          //Execute modem command (REQUEST MODEM SYSTEM INFO)
-         modem.execute("AT^SYSINFO");
+			modem.execute("AT^SYSINFO");
+			
+			//Check for messages
+			modem.getMessages();
       }
       else
       {

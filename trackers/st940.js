@@ -295,7 +295,7 @@ class ST940 extends Tracker
 
          //Update tracker to indicate configuration finished
          this.getDB()
-            .collection('Tracker')
+            .collection('Trackers')
             .doc(this.getID())
             .set(
             { 
@@ -328,14 +328,15 @@ class ST940 extends Tracker
       }
    }
 
-   parseData(data)
+   parseData(type, data)
    {
       //"ST910;Emergency;696969;500;20180201;12:26:55;-23.076226;-054.206427;000.367;000.00;1;4.1;0;1;02;1865;c57704f358;724;18;-397;1267;255;3;25\r"
-      if(data[0] === "ST910" && (data[1] === 'Emergency' || data[1] === 'Alert' || data[1] === 'Location'))
+      if(type == "tcp_data" && data[0] === "ST910" && (data[1] === 'Emergency' || data[1] === 'Alert' || data[1] === 'Location'))
       {
          //Parse datetime
          var datetime =  moment.utc(data[4] + "-" + data[5], "YYYYMMDD-hh;mm;ss").toDate();
-         //Parse coordinate
+			
+			//Parse coordinate
          var coordinates = this.getGeoPoint(parseFloat(data[6]), parseFloat(data[7]));
 
          //Parse speed
@@ -632,8 +633,8 @@ class ST940 extends Tracker
       //Check if tracker configuration matches user configuration (if exists)
       if(user_config == null || (this.configEquals(user_config, tracker_config) && !user_config.status.finished))
       {
-         //Update user configuration
-         user_config.status.finished = true;
+         //Update tracker configuration
+         tracker_config.status.finished = true;
 
          //Insert configuration on DB if user has not set configuration yet
          this.getDB()

@@ -139,7 +139,7 @@ class TK102B extends Tracker
             logger.debug("Executing tracker " + this.get('name') + " config " + configuration.name + ": " + command);
 
             //Send SMS to request command
-            this.getParser().send_sms(this, command, (sent, result) =>
+            this.getParser().send_sms(this.get('identification'), command, (sent, result) =>
             {
                 //SMS successfully sent
                 if(sent)
@@ -675,7 +675,10 @@ class TK102B extends Tracker
             this.sendNotification("Notify_Available", notificationParams);
 
             //Log data
-            logger.info("Received delivery report from " + this.get('name'));
+				logger.info("Received delivery report from " + this.get('name'));
+				
+				//Notification sent, delete from modem memmory
+				this.getParser().deleteMessage(delivery_report);
         }
     }
 
@@ -797,7 +800,7 @@ class TK102B extends Tracker
       logger.debug("Sending '" + command + "' to disable alert from tracker" + this.get('name'));
 
       //Send SMS to request command
-      this.getParser().send_sms(this, command, (sent, result) =>
+      this.getParser().send_sms(this.get('identification'), command, (sent, result) =>
       {
          //SMS successfully sent
          if(sent)
