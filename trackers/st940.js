@@ -62,7 +62,7 @@ class ST940 extends Tracker
       return this._socket;
    }
 
-   checkConfigurations(new_connection)
+   checkConfigurations()
    {
       //Check if tracker has any configuration available
       if(this.getConfigurationsCount() > 0)
@@ -162,7 +162,7 @@ class ST940 extends Tracker
                };
 
                //Update tracker to indicate pending configuration
-               this.getDB().doc('Trackers/' + this.getID()).update(
+               this.getDB().doc('Tracker/' + this.getID()).update(
                {
                   lastConfiguration:  lastConfiguration,
                   lastUpdate: new Date()
@@ -236,7 +236,7 @@ class ST940 extends Tracker
          {
             //Update tracker to indicate pending configuration
             this.getDB()
-               .doc('Trackers/' + this.getID())
+               .doc('Tracker/' + this.getID())
                .update(
                { 
                      lastConfiguration: lastConfiguration,
@@ -295,7 +295,7 @@ class ST940 extends Tracker
 
          //Update tracker to indicate configuration finished
          this.getDB()
-            .collection('Trackers')
+            .collection('Tracker')
             .doc(this.getID())
             .set(
             { 
@@ -399,7 +399,7 @@ class ST940 extends Tracker
             this.getGeolocation().request(requestParams, (error, result) =>
             {  
                 //If result is successfull
-                if (result && result.latitude < 90 && result.longitude < 90) 
+                if (result && result.latitude < 90 && result.longitude < 90)
                 {
                     //Create coordinates object
                     var coordinates = this.getGeoPoint(result.latitude, result.longitude);
@@ -407,7 +407,6 @@ class ST940 extends Tracker
                     //Define coordinates params to be inserted/updated
                     var coordinate_params = 
                     {
-                        cellID: requestParams.mcc + "_" + requestParams.mnc + "_" + requestParams.cid + "_" + requestParams.lac,
                         datetime: datetime,
                         signalLevel: 'N/D',
                         batteryLevel: batteryLevel,
@@ -579,7 +578,7 @@ class ST940 extends Tracker
    {
       //Insert configuration on DB if user has not set configuration yet
       this.getDB()
-         .collection('Trackers/' + this.getID() + '/Configurations')
+         .collection('Tracker/' + this.getID() + '/Configurations')
          .doc("RequestConfig")
          .set({
             name: "RequestConfig", 
@@ -638,7 +637,7 @@ class ST940 extends Tracker
 
          //Insert configuration on DB if user has not set configuration yet
          this.getDB()
-            .collection('Trackers/' + this.getID() + '/Configurations')
+            .collection('Tracker/' + this.getID() + '/Configurations')
             .doc(tracker_config.name)
             .set(tracker_config, {merge: true})
          .then(() => 

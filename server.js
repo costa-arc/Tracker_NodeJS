@@ -101,65 +101,51 @@ sms_parser.on('data', (type, data) =>
 tcp_parser.on('data', (model, tcp_socket, data) => 
 {
   //Check the source from data is a known tracker
-  if(trackers[data.source])
+  switch(model)
   {
-		//Add tcp connection to tracker
-		trackers[data.source].setConnection(tcp_socket);
-
-		//Call method to parse data
-		trackers[data.source].parseData('tcp_data', data.content);
-  }
-  else if(model == "CLIENT")
-  {
-		//If client is not connected yet
-		if(!clients[data.source])
-		{
-			//Add new client to list
-			clients[data.source] = new Client(data.source, sms_parser);
-		}
-
-		//Update tcp_socket from client
-		clients[data.source].setConnection(tcp_socket);
-
-		//Call method to parse data
-		clients[data.source].parseData('tcp_data', data.content);
-  }
-  else
-  {
-		//Check on DB if there is a tracker with this ID
-		google_services.getDB()
-		.doc("Trackers/" + data.source)
-		.get()
-		.then(docSnapshot => 
-		{
-			//if there is no tracker with this ID
-			if (!docSnapshot.exists) 
+	  case "ST910":
+	  		//Check if this tracker is already loaded
+	  		if(trackers[data.source])
 			{
-				//If SUNTECH MODEL
-				if(model == "ST910" || model == "ST940")
+				//Add tcp connection to tracker
+				trackers[data.source].setConnection(tcp_socket);
+
+				//Call method to parse data
+				trackers[data.source].parseData('tcp_data', data.content);
+			} 
+			else
+			{
+				//Check on DB if there is a tracker with this ID
+				google_services.getDB()
+				.doc("Tracker/" + data.source)
+				.get()
+				.then(docSnapshot => 
 				{
-					//Log info
-					logger.info("New tracker (ST940@" + data.source + ") detected, requesting current configuration.")
-					
-					//Initialize tracker array
-					var tracker_params = {};
+					//if there is no tracker with this ID
+					if (!docSnapshot.exists) 
+					{
+						//Log info
+						logger.info("New tracker (ST940@" + data.source + ") detected, requesting current configuration.")
+						
+						//Initialize tracker array
+						var tracker_params = {};
 
-					//Else, create an entry on DB
-					tracker_params.name = "ST940 - ID(" + data.source + ")";
-					tracker_params.model = "st940";
-					tracker_params.description = "Adicionado automaticamente";
-					tracker_params.identification = data.source;
-					tracker_params.lastUpdate = new Date();
+						//Else, create an entry on DB
+						tracker_params.name = "ST940 - ID(" + data.source + ")";
+						tracker_params.model = "st940";
+						tracker_params.description = "Adicionado automaticamente";
+						tracker_params.identification = data.source;
+						tracker_params.lastUpdate = new Date();
 
-					//Choose a random color to new tracker
-					tracker_params.backgroundColor = ['#99ff0000', '#99ffe600', '#99049f1e', '#99009dff', '#9900ffee'][Math.floor((Math.random() * 4) + 1)];
-					
-					//Create a new tracker object
-					trackers[data.source] = new ST940(data.source, tcp_parser, google_services);
+						//Choose a random color to new tracker
+						tracker_params.backgroundColor = ['#99ff0000', '#99ffe600', '#99049f1e', '#99009dff', '#9900ffee'][Math.floor((Math.random() * 4) + 1)];
+						
+						//Create a new tracker object
+						trackers[data.source] = new ST940(data.source, tcp_parser, google_services);
 
-					//Insert new tracker
-					google_services.getDB()
-						.collection('Trackers')
+						//Insert new tracker
+						google_services.getDB()
+						.collection('Tracker')
 						.doc(data.source)
 						.set(tracker_params, { merge: true })
 						.then(() => 
@@ -171,21 +157,60 @@ tcp_parser.on('data', (model, tcp_socket, data) =>
 							trackers[data.source].setConnection(tcp_socket);
 
 							//Call method to parse data
-							trackers[data.source].parseData(data.content);
+							trackers[data.source].parseData('tcp_data', data.content);
 						});
-				}
-				else if(model == "TK102B")
-				{
-
-				}
-				else
-				{
-					//Log info
-					logger.warn("Unknown tracker model: " + model + " / " + data.source)
-				}
+					}
+					else
+					{
+						//Log warning
+						logger.warn("Received connection from unloaded ST940 tracker");
+					}
+				});
 			}
-		});
-  	}
+			break;
+
+		case "TK102B":
+			//Search tracker by IMEI
+			var tracker = searchByIMEI(data.source);
+
+			//Check if tracker already loaded
+			if(tracker)
+			{
+				//Add tcp connection to tracker
+				tracker.setConnection(tcp_socket);
+
+				//Call method to parse data
+				tracker.parseData('tcp_data', data.content);
+			}
+			else
+			{
+				//Log warning
+				logger.warn("Received connection from unloaded TK102B tracker");
+			}
+			break;
+
+		case "CLIENT":
+		
+			//If client is not connected yet
+			if(!clients[data.source])
+			{
+				//Add new client to list
+				clients[data.source] = new Client(data.source, sms_parser, trackers);
+			}
+
+			//Update tcp_socket from client
+			clients[data.source].setConnection(tcp_socket);
+
+			//Call method to parse data
+			clients[data.source].parseData('tcp_data', data.content);
+
+			break;
+
+		default:
+		
+			//Log warning
+			logger.warn("Received connection from unknown origin");
+	}
 });
 
 //Start monitoring trackers
@@ -204,7 +229,7 @@ function monitorTrackers()
 
 	//Initialize listener
 	google_services.getDB()
-		.collection("Trackers")
+		.collection("Tracker")
 		.onSnapshot(querySnapshot => 
 		{
 			//Flag -> Listener initialized
@@ -285,6 +310,13 @@ function monitorTrackers()
 
 function searchByPhoneNumber(phoneNumber)
 {
+	for (var tracker_id in trackers) 
+	{
+		if(trackers[tracker_id].get('identification') == phoneNumber)
+		{
+			return trackers[tracker_id];
+		}
+  }
 
 	for (var client_auth in clients) 
 	 {
@@ -293,10 +325,13 @@ function searchByPhoneNumber(phoneNumber)
 			 return clients[client_auth];
 		 }
 	}
+}
 
+function searchByIMEI(imei)
+{
 	for (var tracker_id in trackers) 
 	{
-		if(trackers[tracker_id].get('identification') == phoneNumber)
+		if(trackers[tracker_id].get('imei') == imei)
 		{
 			return trackers[tracker_id];
 		}

@@ -7,19 +7,19 @@ const moment = require('moment');
 //Extends base tracker class
 class Client
 {
-   constructor(auth, sms_parser) 
+   constructor(auth, sms_parser, trackers) 
    {
-
-      this._auth = auth;
-      //Array to store commands while tracker connection is not active
-      this._sms_parser = sms_parser;
+		//Store data
+		this._auth = auth;
+		this._sms_parser = sms_parser;
+		this._trackers = trackers;
 	}
 
 	getParser()
 	{
 		return this._sms_parser;
 	}
-	
+		
 	getAuth()
 	{
 		return this._auth;
@@ -87,37 +87,56 @@ class Client
 				}
 				else if(data[3].trim() == "TEST")
 				{
-					//Save phone number client wants to test
-					this.setPhoneNumber(data[5].trim());
-
-					//Send SMS to request tracker IMEI
-					this.getParser().send_sms(this.getPhoneNumber(), "imei" + data[6].trim(), (sent, result) =>
+					//Check if there is a tracker with this phone number already
+					if(this.searchByPhoneNumber(data[5].trim()) != null)
 					{
-						//SMS successfully sent
-						if(sent)
-						{
-							//Respond success to client
-							this.sendResponse("SMS SENT");
+						//Respond error to client
+						this.sendResponse("Erro: Já existe um rastreador com este número.");
+					}
+					else
+					{
+						//Save phone number client wants to test
+						this.setPhoneNumber(data[5].trim());
 
-							//Log data
-							logger.debug("Sent test SMS to " + this.getPhoneNumber() + ": imei" + data[6].trim());
-						}
-						else
+						//Send SMS to request tracker IMEI
+						this.getParser().send_sms(this.getPhoneNumber(), "imei" + data[6].trim(), (sent, result) =>
 						{
-							//Respond error to client
-							this.sendResponse("Erro: Não foi possível enviar SMS ao rastreador.");
+							//SMS successfully sent
+							if(sent)
+							{
+								//Respond success to client
+								this.sendResponse("SMS SENT");
 
-							//Result error
-							logger.error("Could not send test SMS to " + this.getPhoneNumber() + ", error sending SMS: " + result);
-						}
-					});
+								//Log data
+								logger.debug("Sent test SMS to " + this.getPhoneNumber() + ": imei" + data[6].trim());
+							}
+							else
+							{
+								//Respond error to client
+								this.sendResponse("Erro: Não foi possível enviar SMS ao rastreador.");
+
+								//Result error
+								logger.error("Could not send test SMS to " + this.getPhoneNumber() + ", error sending SMS: " + result);
+							}
+						});
+					}
 				}
 			}
 		} 
 		else if(type == "delivery_report")
 		{
-			//Respond success to client
-			this.sendResponse("DELIVERY REPORT")
+
+			//Check if status == DELIVERED
+			if(data.content.status == 0)
+			{
+				//Respond success to client
+				this.sendResponse("DELIVERY REPORT")
+			}
+			else
+			{
+				//Respond error to client
+				this.sendResponse("Erro: Não foi possível confirmar entrega do SMS.");
+			}
 			
 			//Message not relevant, delete from memmory
 			this.getParser().deleteMessage(data.content);
@@ -138,11 +157,38 @@ class Client
 				//Log data 
 				logger.debug('Received SMS, testing tracker ' + this.getPhoneNumber() + ": " + sms.text);
 
-				//Remove null bytes from string
-				var sms_text = sms.text.replace(/\0/g, '');
+				//Check if password is valid
+				if(sms.text.includes("pwd") || sms.text.includes("password"))
+				{
+					//Respond error to client
+					this.sendResponse("Erro: Dispositivo recusou a senha informada.");
+				}
+				else
+				{
+					//Remove null bytes from string
+					var sms_text = sms.text.replace(/\0/g, '');
 
-				//Respond success to client
-				this.sendResponse("IMEI: " + sms_text);
+					//Check if SMS is an valid IMEI
+					if(sms_text.length == 15 && !isNaN(sms_text))
+					{
+						//Check if there is a tracker with this phone number already
+						if(this.searchByIMEI(sms_text) != null)
+						{
+							//Respond error to client
+							this.sendResponse("Erro: Já existe um rastreador com este IMEI");
+						}
+						else
+						{
+							//Respond success to client
+							this.sendResponse("IMEI: " + sms_text);
+						}
+					}
+					else
+					{
+						//Respond error to client
+						this.sendResponse("Erro: Resposta inválida do rastreador");
+					}
+				}
 				
 				//Finish connection
 				this.disconnect();
@@ -195,7 +241,29 @@ class Client
 
       //Command not sent, return error
       return false;
-   }
+	}
+	
+	searchByPhoneNumber(phoneNumber)
+	{
+		for (var tracker_id in this._trackers) 
+		{
+			if(this._trackers[tracker_id].get('identification') == phoneNumber)
+			{
+				return this._trackers[tracker_id];
+			}
+		}
+	}
+
+	searchByIMEI(imei)
+	{
+		for (var tracker_id in this._trackers) 
+		{
+			if(this._trackers[tracker_id].get('imei') == imei)
+			{
+				return this._trackers[tracker_id];
+			}
+		}
+	}
 }
 
 module.exports = Client

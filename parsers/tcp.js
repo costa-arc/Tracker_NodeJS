@@ -31,7 +31,7 @@ class TCP_Parser extends EventEmitter
         this._server.on('connection', conn => 
         {
             //Log connection
-            logger.info('TCP (' +  conn.remoteAddress + ") -> Connected");
+            logger.info('TCP (' +  conn.remoteAddress + ":" + conn.remotePort + ") -> Connected");
 
             //Set enconding
             conn.setEncoding('utf8');
@@ -40,21 +40,49 @@ class TCP_Parser extends EventEmitter
             conn.on('data', data => 
             {
                 //Log data received
-                logger.debug("TCP (" + conn.remoteAddress + ') -> [' + data.replace(/\r?\n|\r/, '') + ']');
+                logger.info("TCP (" + conn.remoteAddress + ":" + conn.remotePort + ") -> [" + data.replace(/\r?\n|\r/, '') + "]");
 
                 //Check if this is COBAN GPRS protocol
                 if(data.startsWith('##'))
                 {
-                    //Split data using ';' separator
-                    var content = data.split(',');
+						//Split data using ';' separator
+						var content = data.split(',');
+						
+						//Check if connection contains imei data
+						if(content[1] && content[1].startsWith("imei:"))
+						{
+							//Call method to handle tcp data
+							this.emit('data', 'TK102B', conn,
+							{ 
+									source: content[1].substring(5, 20), 
+									content: ["##", "connection"]
+							});
+						}
+					 }
+					 else if(data.length == 16 && !isNaN(data.substring(0,15)))
+					 {
+						//Heartbeat packet, retrieve imei 
+						var imei = data.substring(0,15);
 
-                    //Call method to handle tcp data
-                    this.emit('data', 'TK102B', conn,
-                    { 
-                        source: content[1].trim(), 
-                        content: content
-                    });
-                }
+						//Call method to handle tcp data
+						this.emit('data', 'TK102B', conn,
+						{ 
+							source: imei, 
+							content: ["##", "heartbeat"]
+						});
+					 }
+					 else if(data.startsWith("imei"))
+					 {
+						//Split data using ';' separator
+						var content = data.split(',');
+
+						//Call method to handle tcp data
+						this.emit('data', 'TK102B', conn,
+						{ 
+							source: content[0].substring(5), 
+							content: content
+						});
+					 }
                 else if(data.includes("ST910"))
                 {
                     //Split data using ';' separator

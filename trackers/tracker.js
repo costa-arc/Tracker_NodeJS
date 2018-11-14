@@ -109,7 +109,7 @@ class Tracker
     //Get Pending configuration array
     getPendingConfigs()
     {
-        return this._pending_configs
+        return this._pending_configs;
     }
 
     //Set Configuration array
@@ -136,8 +136,8 @@ class Tracker
     {
         //Load configuration from trackers
         this.getDB()
-        .collection("Trackers/" + this.getID() + "/Configurations")
-        .orderBy("priority", 'desc')
+        .collection("Tracker/" + this.getID() + "/Configurations")
+        .orderBy("status.datetime", 'desc')
         .get()
         .then(result =>
         {
@@ -222,14 +222,14 @@ class Tracker
 
         //Update tracker
         this.getDB()
-        .collection('Trackers')
+        .collection('Tracker')
         .doc(this.getID())
         .set(tracker_params, { merge: true })
         .then(() => 
         {
             //Get latest coordinate from this tracker
             this.getDB()
-            .collection('Trackers/' + this.getID() + '/Coordinates')
+            .collection('Tracker/' + this.getID() + '/Coordinates')
             .orderBy('datetime', 'desc')
             .where('datetime', '<=', coordinate_params.datetime)
             .limit(1)
@@ -263,7 +263,7 @@ class Tracker
 
                         //Insert coordinates with geocoded address
                         self.getDB()
-                            .collection('Trackers/' + self.getID() + "/Coordinates")
+                            .collection('Tracker/' + self.getID() + "/Coordinates")
                             .doc(coordinate_id)
                             .set(coordinate_params)
                         
@@ -285,7 +285,7 @@ class Tracker
 
                         //Insert coordinates without geocoded address
                         self.getDB()
-                            .collection('Trackers/' + self.getID() + "/Coordinates")
+                            .collection('Tracker/' + self.getID() + "/Coordinates")
                             .doc(coordinate_id)
                             .set(coordinate_params)
 
@@ -311,7 +311,7 @@ class Tracker
 
                     //Current coordinates is too close from previous, just update last coordinate
                     self.getDB()
-                        .collection('Trackers/' + self.getID() + "/Coordinates")
+                        .collection('Tracker/' + self.getID() + "/Coordinates")
                         .doc(lastCoordinate.id)
                         .update(coordinate_params);
 
@@ -338,7 +338,39 @@ class Tracker
             //Log error
             logger.error("Error updating tracker on DB: " + error);
         });
-    }
+	 }
+	 
+	 getMNC(network)
+	 {
+		 switch(network)
+		 {
+			 case "TIM":
+				 return "04";
+			 case "VIVO":
+				 return "06";
+			 case "OI":
+				 return "16";
+			 case "CLARO":
+				 return "05";
+			 default:
+				 return "02";
+		 }
+	 }
+	 
+	 parseCoordinate(value, orientation)
+	 {
+		 var degrees = parseInt(value.substring(0, value.indexOf(".") - 2));
+		 var minutes = parseFloat(value.substring(value.indexOf(".") - 2));
+
+		 var decimal = degrees + minutes / 60;
+
+		 if(orientation == "S" || orientation == "W")
+		 {
+			 decimal = decimal * -1;
+		 }
+
+		 return decimal;
+	 }
 }
 
 module.exports = Tracker
